@@ -11,3 +11,4 @@ Exposed-modules:    Data.Trie
 Build-Depends:      base
                   , text
 		  , array
+		  , vector
