@@ -1,0 +1,13 @@
+Name:               adict
+Version:            0.0.0
+Synopsis:           Approximate dictionary searching
+License:            BSD3
+License-file:       LICENSE
+Author:             Jakub Waszczuk
+Maintainer:         waszczuk.kuba@gmail.com
+Build-type:         Simple
+Exposed-modules:    Data.Trie
+		    Data.Adict
+Build-Depends:      base
+                  , text
+		  , array
