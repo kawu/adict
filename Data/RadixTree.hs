@@ -1,4 +1,4 @@
-module Data.Trie
+module Data.RadixTree
 ( Trie ()
 , valueIn
 , anyChild
@@ -13,16 +13,16 @@ import Prelude hiding (lookup)
 import Control.Monad ((>=>))
 import Control.Applicative ((<$>))
 import Data.List (groupBy, sortBy, find)
+import Data.ListLike (ListLike, toList)
 import Data.Function (on)
 import qualified Data.Vector as V
-import qualified Data.Text as T
 
-data Trie a = Trie (Maybe a) (V.Vector (Char, Trie a)) deriving Show
+data Trie a b = Trie (Maybe b) (V.Vector (a, Trie a b)) deriving Show
 
-empty :: Trie a
+empty :: Trie a b
 empty = Trie Nothing V.empty
 
-size :: Trie a -> Int
+size :: Trie a b -> Int
 size (Trie mv cs) =
     case mv of
         Just _  -> n + 1
@@ -30,38 +30,38 @@ size (Trie mv cs) =
   where
     n = sum $ map (size . snd) $ V.toList cs
 
-valueIn :: Trie a -> Maybe a
+valueIn :: Trie a b -> Maybe b
 valueIn (Trie mv _) = mv
 
-anyChild :: Trie a -> [(Char, Trie a)]
+anyChild :: Trie a b -> [(a, Trie a b)]
 anyChild (Trie _ cs) = V.toList cs
 
-child :: Char -> Trie a -> Maybe (Trie a)
+child :: Eq a => a -> Trie a b -> Maybe (Trie a b)
 child x (Trie _ cs) = snd <$> find ((x==).fst) (V.toList cs)
 
-lookup :: String -> Trie a -> Maybe a
+lookup :: Eq a => [a] -> Trie a b -> Maybe b
 lookup xs t = foldr (>=>) return (map child xs) t >>= valueIn
 
-fromLang :: [T.Text] -> Trie ()
+fromLang :: (Eq a, Ord w, ListLike w a) => [w] -> Trie a ()
 fromLang xs = fromList [(x, ()) | x <- xs]
 
-fromList :: [(T.Text, a)] -> Trie a
+fromList :: (Eq a, Ord w, ListLike w a) => [(w, b)] -> Trie a b
 fromList xs =
-    fromSorted $ map (onFst T.unpack) $ nub xs
+    fromSorted $ map (onFst toList) $ nub xs
   where
     nub = map head . groupBy ((==) `on` fst) . sortBy (compare `on` fst)
     onFst f (x, y) = (f x, y)
 
-fromSorted :: [(String, a)] -> Trie a
-fromSorted (("",v):xs) =
+fromSorted :: Eq a => [([a], b)] -> Trie a b
+fromSorted (([],v):xs) =
     let (Trie _ cs) = fromSorted xs
     in  Trie (Just v) cs
 fromSorted xs
     = Trie Nothing $ V.fromList $ map mkTrie
-    $ groupBy ((==) `on` leadingChar) xs
+    $ groupBy ((==) `on` leadingSym) xs
   where
-    mkTrie :: [(String, a)] -> (Char, Trie a)
-    mkTrie xs = ( leadingChar $ head xs
+    mkTrie :: Eq a => [([a], b)] -> (a, Trie a b)
+    mkTrie xs = ( leadingSym $ head xs
                 , fromSorted $ map trimLeading xs )
-    leadingChar ((x:xs), _) = x
+    leadingSym  ((x:xs), _) = x
     trimLeading ((x:xs), v) = (xs, v)

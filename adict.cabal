@@ -6,9 +6,9 @@ License-file:       LICENSE
 Author:             Jakub Waszczuk
 Maintainer:         waszczuk.kuba@gmail.com
 Build-type:         Simple
-Exposed-modules:    Data.Trie
+Exposed-modules:    Data.RadixTree
 		    Data.Adict
 Build-Depends:      base
-                  , text
+		  , ListLike
 		  , array
 		  , vector
