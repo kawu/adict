@@ -8,7 +8,9 @@ Maintainer:         waszczuk.kuba@gmail.com
 Build-type:         Simple
 Exposed-modules:    Data.RadixTree
 		    Data.Adict
+		    Data.Adict.Extended
 Build-Depends:      base
+                  , containers
 		  , ListLike
 		  , array
 		  , vector

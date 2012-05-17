@@ -4,6 +4,7 @@ module Data.RadixTree
 , anyChild
 , child
 , lookup
+, follow
 , size
 , fromList
 , fromLang
@@ -39,8 +40,11 @@ anyChild (Trie _ cs) = V.toList cs
 child :: Eq a => a -> Trie a b -> Maybe (Trie a b)
 child x (Trie _ cs) = snd <$> find ((x==).fst) (V.toList cs)
 
+follow :: Eq a => [a] -> Trie a b -> Maybe (Trie a b)
+follow xs t = foldr (>=>) return (map child xs) t
+
 lookup :: Eq a => [a] -> Trie a b -> Maybe b
-lookup xs t = foldr (>=>) return (map child xs) t >>= valueIn
+lookup xs t = follow xs t >>= valueIn
 
 fromLang :: (Eq a, Ord w, ListLike w a) => [w] -> Trie a ()
 fromLang xs = fromList [(x, ()) | x <- xs]
