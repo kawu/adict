@@ -2,6 +2,9 @@ module Data.Adict.Extended
 ( search
 , Rule (..)
 , Entry (..)
+, mkRule
+, beg
+, end
 ) where
 
 import Data.List (isPrefixOf)
@@ -17,6 +20,9 @@ data Rule a = Rule
     , to    :: [a]
     , onBeg :: Bool
     , onEnd :: Bool }
+
+-- | Make rule with default onBeg and onEnd (i.e., == False) values.
+mkRule x c y = Rule x c y False False
 
 -- | Dinctionary entry.
 data Entry a b = Entry
@@ -45,6 +51,15 @@ instance Monoid (Rule a) where
             True  -> error "left rule onEnd"
             False -> e'
 
+beg :: Rule a
+beg = mempty {onBeg = True}
+
+end :: Rule a
+end = mempty {onEnd = True}
+
+-----------------------
+-- Dictionary searching
+-----------------------
 
 search :: Ord a => [Rule a] -> Double -> [a]
        -> Trie a b -> [(Entry a b, Double)]
