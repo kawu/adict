@@ -1,6 +1,6 @@
 module Data.Adict.Extended
 ( search
-, Rule
+, Rule (..)
 , Entry (..)
 ) where
 
