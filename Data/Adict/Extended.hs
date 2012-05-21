@@ -1,7 +1,6 @@
 module Data.Adict.Extended
 ( search
 , Rule (..)
-, Entry (..)
 , mkRule
 , beg
 , end
@@ -12,6 +11,7 @@ import qualified Data.Map as M
 import Data.Monoid
 
 import Data.RadixTree
+import Data.Adict (Entry (..))
 
 -- TODO: Consider standard (cost 1) insertion, deletion and substitution
 -- rules independently from additional, special rules. BE WARE: this idea
@@ -28,18 +28,6 @@ data Rule a = Rule
 
 -- | Make rule with default onBeg and onEnd (i.e., == False) values.
 mkRule x c y = Rule x c y False False
-
--- | Dinctionary entry.
-data Entry a b = Entry
-    { word :: [a]
-    , info :: b }
-    deriving Show
-
-instance Eq a => Eq (Entry a b) where
-    Entry x _ == Entry y _ = x == y
-
-instance Ord a => Ord (Entry a b) where
-    Entry x _ <= Entry y _ = x <= y
 
 instance Monoid (Rule a) where
     mempty = Rule [] 0.0 [] False False

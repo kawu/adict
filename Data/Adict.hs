@@ -2,6 +2,8 @@ module Data.Adict
 ( levenDist
 , levenSearch
 , costDefault
+, Entry (..)
+, Cost (..)
 ) where
 
 import Data.Ix (range)
@@ -36,6 +38,18 @@ costDefault =
         | x == y    = 0
         | otherwise = 1
 
+-- | Dinctionary entry.
+data Entry a b = Entry
+    { word :: [a]
+    , info :: b }
+    deriving Show
+
+instance Eq a => Eq (Entry a b) where
+    Entry x _ == Entry y _ = x == y
+
+instance Ord a => Ord (Entry a b) where
+    Entry x _ <= Entry y _ = x <= y
+
 -- | Levenshtein distance between two strings with given cost function.
 levenDist :: (Eq a, ListLike w a) => Cost a -> w -> w -> Double
 levenDist cost xs ys = distMem m n where
@@ -57,14 +71,14 @@ levenDist cost xs ys = distMem m n where
     n = L.length ys - 1
 
 -- | Find all words in a trie with Levenshtein distance lower or equall to k.
-levenSearch :: (Eq a, ListLike w a)
-            => Cost a -> Double -> w -> Trie a b -> [([a], b)]
+levenSearch :: (Eq a, ListLike w a) => Cost a -> Double -> w
+            -> Trie a b -> [(Entry a b, Double)]
 levenSearch cost k p trie =
     foundHere ++ foundLower
   where
     foundHere
         | fromIntegral (L.length p) <= k = case valueIn trie of
-            Just x  -> [([], x)]
+            Just x  -> [(Entry [] x, fromIntegral $ L.length p)]
             Nothing -> []
         | otherwise = []
     foundLower = concatMap searchLower $ anyChild trie
@@ -72,9 +86,8 @@ levenSearch cost k p trie =
     distInit = fromIntegral . (+1)
 
 -- | FIXME: Empty pattern case.
-doSearch :: (Eq a, ListLike w a)
-         => Cost a -> Double -> Int -> (Int -> Double)
-         -> w -> (a, Trie a b) -> [([a], b)]
+doSearch :: (Eq a, ListLike w a) => Cost a -> Double -> Int -> (Int -> Double)
+         -> w -> (a, Trie a b) -> [(Entry a b, Double)]
 doSearch cost k j distPar p (c, trie) = 
     foundHere ++ map (appendChar c) foundLower
   where
@@ -91,7 +104,7 @@ doSearch cost k j distPar p (c, trie) =
 
     foundHere
         | distMem m <= k = case valueIn trie of
-            Just x  -> [([c], x)]
+            Just x  -> [(Entry [c] x, distMem m)]
             Nothing -> []
         | otherwise = []
     foundLower
@@ -99,6 +112,7 @@ doSearch cost k j distPar p (c, trie) =
         | otherwise = concatMap searchLower $ anyChild trie
       where
         searchLower = doSearch cost k (j+1) distMem p
-    appendChar c (cs, x) = (c:cs, x)
+    -- appendChar c (cs, x) = (c:cs, x)
+    appendChar c (Entry cs x, v) = (Entry (c:cs) x, v)
 
     m = L.length p - 1
