@@ -50,6 +50,9 @@ instance Eq a => Eq (Entry a b) where
 instance Ord a => Ord (Entry a b) where
     Entry x _ <= Entry y _ = x <= y
 
+instance Functor (Entry a) where
+    fmap f (Entry word info) = Entry word (f info)
+
 -- | Levenshtein distance between two strings with given cost function.
 levenDist :: (Eq a, ListLike w a) => Cost a -> w -> w -> Double
 levenDist cost xs ys = distMem m n where
