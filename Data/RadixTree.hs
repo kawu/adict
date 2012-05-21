@@ -8,6 +8,7 @@ module Data.RadixTree
 , size
 , fromList
 , fromLang
+, toList
 ) where
 
 import Prelude hiding (lookup)
@@ -65,13 +66,23 @@ insert (x:xs) y trie = subChild trie x . insert xs y $
         Just trie' -> trie'
         Nothing    -> empty
 
-fromLang :: (Eq a, Ord a) => [[a]] -> Trie a ()
+fromLang :: Eq a => [[a]] -> Trie a ()
 fromLang xs = fromList [(x, ()) | x <- xs]
 
-fromList :: (Eq a, Ord a) => [([a], b)] -> Trie a b
+fromList :: Eq a => [([a], b)] -> Trie a b
 fromList xs =
     let update trie (x, y) = insert x y trie
     in  foldl' update empty xs
+
+toList :: Trie a b -> [([a], b)]
+toList trie =
+    case valueIn trie of
+        Just y -> ([], y) : lower
+        Nothing -> lower
+  where
+    lower = concatMap goDown $ anyChild trie
+    goDown (x, trie') = map (addChar x) $ toList trie'
+    addChar x (xs, y) = (x:xs, y)
 
 -- fromList :: (Eq a, Ord w, ListLike w a) => [(w, b)] -> Trie a b
 -- fromList xs =
