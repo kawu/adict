@@ -16,3 +16,4 @@ Build-Depends:      base
 		  , vector
 		  , binary
 		  , vector-binary
+		  , parallel

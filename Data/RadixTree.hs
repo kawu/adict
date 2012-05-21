@@ -19,6 +19,7 @@ import Data.Function (on)
 import qualified Data.Vector as V
 import Data.Binary
 import Data.Vector.Binary
+import Control.Parallel.Strategies
 
 data Trie a b = Trie (Maybe b) (V.Vector (a, Trie a b)) deriving Show
 
@@ -48,10 +49,12 @@ child x (Trie _ cs) = snd <$> find ((x==).fst) (V.toList cs)
 
 -- | Substitute child for a given character. 
 subChild :: Eq a => Trie a b -> a -> Trie a b -> Trie a b
-subChild (Trie y cs) x newChild
-    = Trie y $ V.fromList
-    $ ((x, newChild):) $ filter ((x/=).fst)
-    $ V.toList cs
+subChild (Trie y cs) x newChild =
+    cs'' `seq` cs''' `seq` Trie y cs'''
+  where
+    cs' = filter ((x/=).fst) (V.toList cs)
+    cs'' = ((x, newChild):cs') `using` evalList (evalTuple2 rseq rseq)
+    cs''' = V.fromList cs''
 
 follow :: Eq a => [a] -> Trie a b -> Maybe (Trie a b)
 follow xs t = foldr (>=>) return (map child xs) t
