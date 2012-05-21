@@ -13,8 +13,7 @@ module Data.RadixTree
 import Prelude hiding (lookup)
 import Control.Monad ((>=>))
 import Control.Applicative ((<$>))
-import Data.List (groupBy, sortBy, find)
-import Data.ListLike (ListLike, toList)
+import Data.List (groupBy, sortBy, find, foldl')
 import Data.Function (on)
 import qualified Data.Vector as V
 import Data.Binary
@@ -46,32 +45,51 @@ anyChild (Trie _ cs) = V.toList cs
 child :: Eq a => a -> Trie a b -> Maybe (Trie a b)
 child x (Trie _ cs) = snd <$> find ((x==).fst) (V.toList cs)
 
+-- | Substitute child for a given character. 
+subChild :: Eq a => Trie a b -> a -> Trie a b -> Trie a b
+subChild (Trie y cs) x newChild
+    = Trie y $ V.fromList
+    $ ((x, newChild):) $ filter ((x/=).fst)
+    $ V.toList cs
+
 follow :: Eq a => [a] -> Trie a b -> Maybe (Trie a b)
 follow xs t = foldr (>=>) return (map child xs) t
 
 lookup :: Eq a => [a] -> Trie a b -> Maybe b
 lookup xs t = follow xs t >>= valueIn
 
-fromLang :: (Eq a, Ord w, ListLike w a) => [w] -> Trie a ()
+insert :: Eq a => [a] -> b -> Trie a b -> Trie a b
+insert [] y (Trie _ cs) = Trie (Just y) cs
+insert (x:xs) y trie = subChild trie x . insert xs y $
+    case child x trie of
+        Just trie' -> trie'
+        Nothing    -> empty
+
+fromLang :: (Eq a, Ord a) => [[a]] -> Trie a ()
 fromLang xs = fromList [(x, ()) | x <- xs]
 
-fromList :: (Eq a, Ord w, ListLike w a) => [(w, b)] -> Trie a b
+fromList :: (Eq a, Ord a) => [([a], b)] -> Trie a b
 fromList xs =
-    fromSorted $ map (onFst toList) $ nub xs
-  where
-    nub = map head . groupBy ((==) `on` fst) . sortBy (compare `on` fst)
-    onFst f (x, y) = (f x, y)
+    let update trie (x, y) = insert x y trie
+    in  foldl' update empty xs
 
-fromSorted :: Eq a => [([a], b)] -> Trie a b
-fromSorted (([],v):xs) =
-    let (Trie _ cs) = fromSorted xs
-    in  Trie (Just v) cs
-fromSorted xs
-    = Trie Nothing $ V.fromList $ map mkTrie
-    $ groupBy ((==) `on` leadingSym) xs
-  where
-    mkTrie :: Eq a => [([a], b)] -> (a, Trie a b)
-    mkTrie xs = ( leadingSym $ head xs
-                , fromSorted $ map trimLeading xs )
-    leadingSym  ((x:xs), _) = x
-    trimLeading ((x:xs), v) = (xs, v)
+-- fromList :: (Eq a, Ord w, ListLike w a) => [(w, b)] -> Trie a b
+-- fromList xs =
+--     fromSorted $ map (onFst toList) $ nub xs
+--   where
+--     nub = map head . groupBy ((==) `on` fst) . sortBy (compare `on` fst)
+--     onFst f (x, y) = (f x, y)
+-- 
+-- fromSorted :: Eq a => [([a], b)] -> Trie a b
+-- fromSorted (([],v):xs) =
+--     let (Trie _ cs) = fromSorted xs
+--     in  Trie (Just v) cs
+-- fromSorted xs
+--     = Trie Nothing $ V.fromList $ map mkTrie
+--     $ groupBy ((==) `on` leadingSym) xs
+--   where
+--     mkTrie :: Eq a => [([a], b)] -> (a, Trie a b)
+--     mkTrie xs = ( leadingSym $ head xs
+--                 , fromSorted $ map trimLeading xs )
+--     leadingSym  ((x:xs), _) = x
+--     trimLeading ((x:xs), v) = (xs, v)
