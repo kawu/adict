@@ -23,9 +23,11 @@ import Control.Parallel.Strategies
 
 data Trie a b = Trie (Maybe b) (V.Vector (a, Trie a b)) deriving Show
 
-instance (Binary a, Binary b) => Binary (Trie a b) where
-    put (Trie x ts) = put (x, ts)
-    get = uncurry Trie <$> get
+instance (Ord a, Binary a, Binary b) => Binary (Trie a b) where
+--     put (Trie x ts) = put (x, ts)
+--     get = uncurry Trie <$> get
+    put t = put (size t) >> mapM_ put (toAscList t)
+    get   = fromDistinctAscList <$> get
 
 empty :: Trie a b
 empty = Trie Nothing V.empty
@@ -72,38 +74,38 @@ insert (x:xs) y trie = subChild trie x . insert xs y $
 fromLang :: Eq a => [[a]] -> Trie a ()
 fromLang xs = fromList [(x, ()) | x <- xs]
 
+toList :: Trie a b -> [([a], b)]
+toList = toListWith id
+
+toAscList :: Ord a => Trie a b -> [([a], b)]
+toAscList = toListWith $ sortBy (compare `on` fst)
+
+-- | Generic toList function with additional "operation on children" function.
+toListWith :: ([(a, Trie a b)] -> [(a, Trie a b)]) -> Trie a b -> [([a], b)]
+toListWith op trie =
+    case valueIn trie of
+        Just y -> ([], y) : lower
+        Nothing -> lower
+  where
+    lower = concatMap goDown $ op $ anyChild trie
+    goDown (x, trie') = map (addChar x) $ toList trie'
+    addChar x (xs, y) = (x:xs, y)
+
 fromList :: Eq a => [([a], b)] -> Trie a b
 fromList xs =
     let update trie (x, y) = insert x y trie
     in  foldl' update empty xs
 
-toList :: Trie a b -> [([a], b)]
-toList trie =
-    case valueIn trie of
-        Just y -> ([], y) : lower
-        Nothing -> lower
+fromDistinctAscList :: Eq a => [([a], b)] -> Trie a b
+fromDistinctAscList (([],v):xs) =
+    let (Trie _ cs) = fromDistinctAscList xs
+    in  Trie (Just v) cs
+fromDistinctAscList xs
+    = Trie Nothing $ V.fromList $ map mkTrie
+    $ groupBy ((==) `on` leadingSym) xs
   where
-    lower = concatMap goDown $ anyChild trie
-    goDown (x, trie') = map (addChar x) $ toList trie'
-    addChar x (xs, y) = (x:xs, y)
-
--- fromList :: (Eq a, Ord w, ListLike w a) => [(w, b)] -> Trie a b
--- fromList xs =
---     fromSorted $ map (onFst toList) $ nub xs
---   where
---     nub = map head . groupBy ((==) `on` fst) . sortBy (compare `on` fst)
---     onFst f (x, y) = (f x, y)
--- 
--- fromSorted :: Eq a => [([a], b)] -> Trie a b
--- fromSorted (([],v):xs) =
---     let (Trie _ cs) = fromSorted xs
---     in  Trie (Just v) cs
--- fromSorted xs
---     = Trie Nothing $ V.fromList $ map mkTrie
---     $ groupBy ((==) `on` leadingSym) xs
---   where
---     mkTrie :: Eq a => [([a], b)] -> (a, Trie a b)
---     mkTrie xs = ( leadingSym $ head xs
---                 , fromSorted $ map trimLeading xs )
---     leadingSym  ((x:xs), _) = x
---     trimLeading ((x:xs), v) = (xs, v)
+    mkTrie :: Eq a => [([a], b)] -> (a, Trie a b)
+    mkTrie xs = ( leadingSym $ head xs
+                , fromDistinctAscList $ map trimLeading xs )
+    leadingSym  ((x:xs), _) = x
+    trimLeading ((x:xs), v) = (xs, v)
