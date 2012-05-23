@@ -1,9 +1,11 @@
 module Data.Adict
-( levenDist
+( Adict
+, levenDist
 , levenSearch
 , costDefault
 , Entry (..)
 , Cost (..)
+, module Data.RadixTree
 ) where
 
 import Data.Ix (range)
@@ -12,6 +14,8 @@ import qualified Data.ListLike as L
 import qualified Data.Array as A
 
 import Data.RadixTree
+
+type Adict a b = Trie a b
 
 (!) :: ListLike full item => full -> Int -> item
 (!) = L.index
