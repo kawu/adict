@@ -24,10 +24,10 @@ import Control.Parallel.Strategies
 data Trie a b = Trie (Maybe b) (V.Vector (a, Trie a b)) deriving Show
 
 instance (Ord a, Binary a, Binary b) => Binary (Trie a b) where
---     put (Trie x ts) = put (x, ts)
---     get = uncurry Trie <$> get
-    put t = put (size t) >> mapM_ put (toAscList t)
-    get   = fromDistinctAscList <$> get
+    put (Trie x ts) = put (x, ts)
+    get = uncurry Trie <$> get
+--     put t = put (size t) >> mapM_ put (toAscList t)
+--     get   = fromDistinctAscList <$> get
 
 empty :: Trie a b
 empty = Trie Nothing V.empty
