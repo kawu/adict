@@ -1,5 +1,6 @@
 module Data.RadixTree
 ( Trie ()
+, empty
 , valueIn
 , anyChild
 , child
