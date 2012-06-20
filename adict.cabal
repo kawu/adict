@@ -17,3 +17,4 @@ Build-Depends:      base
 		  , binary
 		  , vector-binary
 		  , parallel
+		  , QuickCheck

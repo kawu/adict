@@ -21,8 +21,12 @@ import qualified Data.Vector as V
 import Data.Binary
 import Data.Vector.Binary
 import Control.Parallel.Strategies
+import Test.QuickCheck
 
-data Trie a b = Trie (Maybe b) (V.Vector (a, Trie a b)) deriving Show
+data Trie a b = Trie (Maybe b) (V.Vector (a, Trie a b))
+
+instance (Show a, Show b) => Show (Trie a b) where
+    show = show . toList
 
 instance (Ord a, Binary a, Binary b) => Binary (Trie a b) where
     put (Trie x ts) = put (x, ts)
