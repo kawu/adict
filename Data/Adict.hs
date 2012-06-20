@@ -57,25 +57,27 @@ instance Ord a => Ord (Entry a b) where
 instance Functor (Entry a) where
     fmap f (Entry word info) = Entry word (f info)
 
--- | Levenshtein distance between two strings with given cost function.
+-- | Restricted generalized edit distance between two strings with
+-- given cost function.
 levenDist :: (Eq a, ListLike w a) => Cost a -> w -> w -> Double
-levenDist cost xs ys = distMem m n where
-    distArr = A.array bounds [(x, uncurry dist x) | x <- range bounds]
+levenDist cost xs ys =
+    dist' m n
+  where
+    dist' i j = distA A.! (i, j)
+    distA = A.array bounds [(x, uncurry dist x) | x <- range bounds]
     bounds  = ((0, 0), (m, n))
 
-    distMem :: Int -> Int -> Double
-    distMem i j
-        | i >= 0 && j >= 0 = distArr A.! (i, j)
-        | i < 0  && j < 0  = 0
-        | otherwise        = 1 
-
+    dist 0 0 = 0.0
+    dist i 0 = dist' (i-1) 0 + (insert cost) (i, xs$i)
+    dist 0 j = dist' 0 (j-1) + (delete cost) (j, ys$j)
     dist i j = minimum
-        [ distMem (i-1) (j-1) + (subst cost)  (i, xs ! i) (j, ys ! j)
-        , distMem (i-1) j     + (insert cost) (i, xs ! i)
-        , distMem i (j-1)     + (delete cost) (j, ys ! j) ]
+        [ dist' (i-1) (j-1) + (subst cost)  (i, xs$i) (j, ys$j)
+        , dist' (i-1) j     + (insert cost) (i, xs$i)
+        , dist' i (j-1)     + (delete cost) (j, ys$j) ]
 
-    m = L.length xs - 1
-    n = L.length ys - 1
+    xs$i = xs!(i-1)
+    m = L.length xs
+    n = L.length ys
 
 -- | Find all words in a trie with Levenshtein distance lower or equall to k.
 levenSearch :: (Eq a, ListLike w a) => Cost a -> Double -> w
