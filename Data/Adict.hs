@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Data.Adict
 ( Adict
 , levenDist
@@ -8,21 +6,15 @@ module Data.Adict
 , costDefault
 , Entry (..)
 , Cost (..)
-, CostDesc (..)
-, fromDesc
-, prop_consistency
+, Pos
 , module Data.RadixTree
 ) where
 
-import Control.Applicative ((<$>), (<*>), (<|>))
-import Data.Maybe (fromJust, catMaybes)
+import Data.Maybe (catMaybes)
 import Data.Ix (range)
 import Data.ListLike (ListLike)
 import qualified Data.ListLike as L
 import qualified Data.Array as A
-import qualified Data.Map as M
-import qualified Data.Set as S
-import Test.QuickCheck
 
 import Data.RadixTree
 
@@ -156,124 +148,3 @@ levenSearch' cost k j distP x (c, trie) =
         [ distP (i-1) + (subst cost)  (i, x#i) (j, c)
         , dist' (i-1) + (delete cost) (i, x#i)
         , distP i     + (insert cost) (j, c) ]
-
-
--- -- | Find all words in a trie with Levenshtein distance lower or equall to k.
--- levenSearch :: (Eq a, ListLike w a) => Cost a -> Double -> w
---             -> Trie a b -> [(Entry a b, Double)]
--- levenSearch cost k p trie =
---     foundHere ++ foundLower
---   where
---     foundHere
---         | fromIntegral (L.length p) <= k = case valueIn trie of
---             Just x  -> [(Entry [] x, fromIntegral $ L.length p)]
---             Nothing -> []
---         | otherwise = []
---     foundLower = concatMap searchLower $ anyChild trie
---     searchLower = doSearch cost k 0 distInit p
---     distInit = fromIntegral . (+1)
--- 
--- -- | FIXME: Empty pattern case.
--- doSearch :: (Eq a, ListLike w a) => Cost a -> Double -> Int -> (Int -> Double)
---          -> w -> (a, Trie a b) -> [(Entry a b, Double)]
--- doSearch cost k j distPar p (c, trie) = 
---     foundHere ++ map (appendChar c) foundLower
---   where
---     distArr = A.array bounds [(i, dist i) | i <- range bounds]
---     bounds  = (0, m)
--- 
---     distMem (-1) = fromIntegral $ j + 1
---     distMem i    = distArr A.! i
--- 
---     dist i = minimum
---         [ distPar (i-1) + (subst cost)  (i, p ! i) (j, c)
---         , distMem (i-1) + (insert cost) (i, p ! i)
---         , distPar i     + (delete cost) (j, c) ]
--- 
---     foundHere
---         | distMem m <= k = case valueIn trie of
---             Just x  -> [(Entry [c] x, distMem m)]
---             Nothing -> []
---         | otherwise = []
---     foundLower
---         | minimum (A.elems distArr) > k = []
---         | otherwise = concatMap searchLower $ anyChild trie
---       where
---         searchLower = doSearch cost k (j+1) distMem p
---     -- appendChar c (cs, x) = (c:cs, x)
---     appendChar c (Entry cs x, v) = (Entry (c:cs) x, v)
--- 
---     m = L.length p - 1
-
-
--- | Definitions below prepared for the QuickCheck sake.
-
-type P a = (Pos, a)
-
-data CostDesc a = CostDesc
-    { insD :: M.Map (P a) Double
-    , delD :: M.Map (P a) Double
-    , subD :: M.Map (P a, P a) Double }
-    deriving Show
-
-fromDesc :: Ord a => CostDesc a -> Cost a
-fromDesc CostDesc{..} = Cost ins del sub
-  where
-    ins x = fromJust $ x `M.lookup` insD <|> return 1.0
-    del x = fromJust $ x `M.lookup` delD <|> return 1.0
-    sub x y = fromJust $ (x, y) `M.lookup` subD  <|> return (sub' x y)
-    sub' (_, x) (_, y)
-        | x == y    = 0
-        | otherwise = 1
-
--- | We want custom Arbitrary instances for (Pos, a) and for function values.
-newtype PP a = PP (Pos, a)
-newtype Val  = Val Double
-
-pp2p :: PP a -> P a
-pp2p (PP x) = x
-
-getVal :: Val -> Double
-getVal (Val x) = x
-
-instance Arbitrary a => Arbitrary (PP a) where
-    arbitrary = do
-        pos <- choose (0, 10)
-        x   <- arbitrary
-        return $ PP (pos, x)
-
-instance Arbitrary Val where
-    arbitrary = Val <$> choose (0, 10)
-
-instance (Ord a, Arbitrary a) => Arbitrary (CostDesc a) where
-    arbitrary = do
-        ins <- mkIns <$> arbitraryList
-        del <- mkDel <$> arbitraryList
-        sub <- mkSub <$> arbitraryList
-        return $ CostDesc ins del sub
-      where 
-        arbitraryList :: Arbitrary a => Gen [a]
-        arbitraryList = choose (0, 100) >>= vector
-
-        mkIns = mkSmp
-        mkDel = mkSmp
-        mkSmp = M.fromList . map (\(x, v) -> (pp2p x, getVal v))
-        mkSub = M.fromList . map (\(x, y, v) -> ((pp2p x, pp2p y), getVal v))
-
-newtype Lang = Lang [String] deriving Show
-getWords :: Lang -> [String]
-getWords (Lang xs) = xs
-instance Arbitrary Lang where
-    arbitrary = Lang <$> (vector =<< choose (0, 100))
-
--- | QuickCheck property to test.
-prop_consistency :: CostDesc Char -> Positive Double
-                 -> String -> Lang -> Bool
-prop_consistency costDesc kP x lang =
-    nub (simpleSearch cost k x ys) == nub (levenSearch cost k x trie)
-  where
-    nub = S.toList . S.fromList
-    cost = fromDesc costDesc
-    k = getPositive kP
-    ys = [(y, ()) | y <- getWords lang]
-    trie = fromList ys

@@ -14,7 +14,7 @@ import Data.RadixTree
 import Data.Adict (Entry (..))
 
 -- TODO: Consider standard (cost 1) insertion, deletion and substitution
--- rules independently from additional, special rules. BE WARE: this idea
+-- rules independently from additional, special rules. BEWARE: this idea
 -- will probably clash with ruleset manipolation methods!
 
 -- | Substitution ([a] -> [a]) with given cost.
