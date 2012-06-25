@@ -30,8 +30,8 @@ type Pos = Int
 -- or substitution.  It can depend on edit operation position and on symbol
 -- values.
 data Cost a = Cost
-    { insert :: (Pos, a) -> Double
-    , delete :: (Pos, a) -> Double
+    { insert ::  Pos     -> (Pos, a) -> Double
+    , delete :: (Pos, a) ->  Pos     -> Double
     , subst  :: (Pos, a) -> (Pos, a) -> Double }
 
 -- | Simple cost function: all edit operations cost 1.
@@ -39,8 +39,8 @@ costDefault :: Eq a => Cost a
 costDefault =
     Cost insert delete subst
   where
-    insert _ = 1
-    delete _ = 1
+    insert _ _ = 1
+    delete _ _ = 1
     subst (_, x) (_, y)
         | x == y    = 0
         | otherwise = 1
@@ -76,12 +76,12 @@ levenDist cost x y =
     n = L.length y
 
     dist 0 0 = 0
-    dist i 0 = dist' (i-1) 0 + (delete cost) (i, x#i)
-    dist 0 j = dist' 0 (j-1) + (insert cost) (j, y#j)
+    dist i 0 = dist' (i-1) 0 + (delete cost) (i, x#i)  0
+    dist 0 j = dist' 0 (j-1) + (insert cost)  0       (j, y#j)
     dist i j = minimum
-        [ dist' (i-1) (j-1) + (subst cost)  (i, x#i) (j, y#j)
-        , dist' (i-1) j     + (delete cost) (i, x#i)
-        , dist' i (j-1)     + (insert cost) (j, y#j) ]
+        [ dist' (i-1) (j-1)  + (subst cost)  (i, x#i) (j, y#j)
+        , dist' (i-1) j      + (delete cost) (i, x#i)  j
+        , dist' i (j-1)      + (insert cost)  i       (j, y#j) ]
 
 -- | Find all words within a list with restricted generalized edit distance
 -- from x lower or equall to k.
@@ -119,7 +119,7 @@ levenSearch cost k x trie =
     m = L.length x
 
     dist 0 = 0
-    dist i = dist' (i-1) + (delete cost) (i, x#i)
+    dist i = dist' (i-1) + (delete cost) (i, x#i) 0
 
 levenSearch' :: (Eq a, ListLike w a)
              => Cost a -> Double -> Int -> (Int -> Double) -> w
@@ -143,8 +143,8 @@ levenSearch' cost k j distP x (c, trie) =
     bounds  = (0, m)
     m = L.length x
 
-    dist 0 = distP 0  + (insert cost) (j, c)
+    dist 0 = distP 0  + (insert cost)  0       (j, c)
     dist i = minimum
         [ distP (i-1) + (subst cost)  (i, x#i) (j, c)
-        , dist' (i-1) + (delete cost) (i, x#i)
-        , distP i     + (insert cost) (j, c) ]
+        , dist' (i-1) + (delete cost) (i, x#i)  j
+        , distP i     + (insert cost)  i       (j, c) ]

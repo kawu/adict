@@ -25,53 +25,49 @@ langRange = (0, 1000)	-- ^ Size of language
 -- | Simple type synonym for (Pos, a).
 type P a = (Pos, a)
 
+type Val = Double
+
 -- | Helper structure with Arbitrary instance (implementation below),
 -- which can be transformed to an Adict Cost function.
 data CostDesc a = CostDesc
-    { insD :: M.Map (P a) Double
-    , delD :: M.Map (P a) Double
-    , subD :: M.Map (P a, P a) Double }
+    { insD :: M.Map (Pos, P a) Val
+    , delD :: M.Map (P a, Pos) Val
+    , subD :: M.Map (P a, P a) Val }
     deriving Show
 
 -- | Construct Cost function from a description structure.
 fromDesc :: Ord a => CostDesc a -> Cost a
 fromDesc CostDesc{..} = Cost ins del sub
   where
-    ins x = fromJust $ x `M.lookup` insD <|> return 1
-    del x = fromJust $ x `M.lookup` delD <|> return 1
+    ins i y = fromJust $ (i, y) `M.lookup` insD <|> return 1
+    del x j = fromJust $ (x, j) `M.lookup` delD <|> return 1
     sub x y = fromJust $ (x, y) `M.lookup` subD  <|> return (sub' x y)
     sub' (_, x) (_, y)
         | x == y    = 0
         | otherwise = 1
 
--- | Newtypes for (Pos, a) pair and Cost values, so that we can get
--- custom Arbitrary instances for them.
-newtype PP a = PP { unPP :: (Pos, a) }
-newtype Val  = Val { unVal :: Double }
+arbitraryPos :: Gen Pos
+arbitraryPos = choose posRange
 
-instance Arbitrary a => Arbitrary (PP a) where
-    arbitrary = do
-        pos <- choose posRange
-        x   <- arbitrary
-        return $ PP (pos, x)
+arbitraryVal :: Gen Val
+arbitraryVal = choose valRange
 
-instance Arbitrary Val where
-    arbitrary = Val <$> choose valRange
+arbitraryP :: Arbitrary a => Gen (P a)
+arbitraryP = (,) <$> arbitraryPos <*> arbitrary
 
 instance (Ord a, Arbitrary a) => Arbitrary (CostDesc a) where
     arbitrary = do
-        ins <- mkIns <$> arbitraryList
-        del <- mkDel <$> arbitraryList
-        sub <- mkSub <$> arbitraryList
+        ins <- M.fromList <$> listOf insElem 
+        del <- M.fromList <$> listOf delElem
+        sub <- M.fromList <$> listOf subElem
         return $ CostDesc ins del sub
       where 
-        arbitraryList :: Arbitrary a => Gen [a]
-        arbitraryList = choose descRange >>= vector
-
-        mkIns = mkSmp
-        mkDel = mkSmp
-        mkSmp = M.fromList . map (\(x, v) -> (unPP x, unVal v))
-        mkSub = M.fromList . map (\(x, y, v) -> ((unPP x, unPP y), unVal v))
+	insElem  = (,) <$> arbitraryPos <*> arbitraryP
+	delElem  = (,) <$> arbitraryP   <*> arbitraryPos
+	subElem  = (,) <$> arbitraryP   <*> arbitraryP
+        listOf m = do
+            k  <- choose descRange
+            vectorOf k ((,) <$> m <*> arbitraryVal)
 
 -- | Custom language generation.
 newtype Lang = Lang [String] deriving Show
@@ -83,8 +79,7 @@ instance Arbitrary Lang where
 -- | QuickCheck property: set of matching dictionary entries should
 -- be the same no matter which searching function (simpleSearch or
 -- optimized levenSearch) is used.
-propConsistency :: CostDesc Char -> Positive Double
-                -> String -> Lang -> Bool
+propConsistency :: CostDesc Char -> Positive Val -> String -> Lang -> Bool
 propConsistency costDesc kP x lang =
     nub (simpleSearch cost k x ys) == nub (levenSearch cost k x trie)
   where
