@@ -8,14 +8,19 @@ Maintainer:         waszczuk.kuba@gmail.com
 Build-type:         Simple
 Exposed-modules:    Data.RadixTree
 		    Data.Adict
+		    Data.Adict.Fast
 		    Data.Adict.Check
 		    Data.Adict.Extended
 Build-Depends:      base
                   , containers
+		  , text
 		  , ListLike
+		  , listlike-instances
 		  , array
 		  , vector
 		  , binary
 		  , vector-binary
 		  , parallel
 		  , QuickCheck
+		  , criterion
+		  , random

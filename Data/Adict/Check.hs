@@ -5,6 +5,9 @@
 module Data.Adict.Check
 ( CostDesc (..)
 , fromDesc
+, Lang
+, arbitraryLang
+, getWords
 , propConsistency
 ) where
 
@@ -15,12 +18,13 @@ import Data.Maybe (fromJust)
 import Test.QuickCheck
 
 import Data.Adict
+import qualified Data.Adict.Fast as F
 
 -- | Check parameters.
-posRange  = (0, 10)	-- ^ Position of random edit op
+posRange  = (0, 5)	-- ^ Position of random edit op
 valRange  = (0, 10)	-- ^ Weight of edit op 
-descRange = (0, 1000)	-- ^ Number of random edit ops of given type
-langRange = (0, 1000)	-- ^ Size of language
+descRange = (0, 250)	-- ^ Number of random edit ops of given type
+langRange = (0, 250)	-- ^ Size of language
 
 -- | Simple type synonym for (Pos, a).
 type P a = (Pos, a)
@@ -69,20 +73,26 @@ instance (Ord a, Arbitrary a) => Arbitrary (CostDesc a) where
             k  <- choose descRange
             vectorOf k ((,) <$> m <*> arbitraryVal)
 
+arbitraryLang :: (Int, Int) -> Gen [String]
+arbitraryLang r = nub <$> (vector =<< choose r)
+
 -- | Custom language generation.
 newtype Lang = Lang [String] deriving Show
 getWords :: Lang -> [String]
 getWords (Lang xs) = xs
 instance Arbitrary Lang where
-    arbitrary = Lang . nub <$> (vector =<< choose langRange)
+    arbitrary = Lang <$> arbitraryLang langRange
 
 -- | QuickCheck property: set of matching dictionary entries should
 -- be the same no matter which searching function (simpleSearch or
 -- optimized levenSearch) is used.
 propConsistency :: CostDesc Char -> Positive Val -> String -> Lang -> Bool
-propConsistency costDesc kP x lang =
-    nub (simpleSearch cost k x ys) == nub (levenSearch cost k x trie)
+propConsistency costDesc kP x lang = eq
+    [ nub (simpleSearch cost k x ys)
+    , nub (levenSearch cost k x trie)
+    , nub (F.levenSearch cost k x trie) ]
   where
+    eq xs = and [x == x' | (x, x') <- zip xs (tail xs)] 
     cost = fromDesc costDesc
     k = getPositive kP
     ys = [(y, ()) | y <- getWords lang]
