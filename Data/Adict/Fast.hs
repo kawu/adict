@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module Data.Adict.Fast
 ( levenSearch
 , module Data.RadixTree
@@ -6,26 +8,24 @@ module Data.Adict.Fast
 import Control.Monad (guard)
 import Data.Maybe (catMaybes, maybeToList)
 import Data.Ix (range)
-import Data.ListLike (ListLike)
-import qualified Data.ListLike as L
-import qualified Data.Array as A
+import qualified Data.Vector.Unboxed as U
 
 import Data.RadixTree
 import Data.Adict hiding (levenSearch)
 
-(!) :: ListLike full item => full -> Int -> item
-(!) = L.index
+type Word = U.Vector Char
 
-(#) :: ListLike w a => w -> Int -> a
-x#i = x!(i-1)
+(#) :: Word -> Int -> Char
+x#i = x U.! (i-1)
+{-# INLINE (#) #-}
 
 type CostRow = [(Pos, Double)]
 type Thres   = Double
 
 -- | Find all words within a trie with restricted generalized edit distance
 -- lower or equall to k.
-levenSearch :: (Eq a, ListLike w a) => Cost a -> Thres -> w
-            -> Trie a b -> [(Entry a b, Double)]
+levenSearch :: Cost Char -> Thres -> Word
+            -> Trie Char b -> [(Entry Char b, Double)]
 levenSearch cost th x trie =
     foundHere ++ foundLower
   where
@@ -37,14 +37,13 @@ levenSearch cost th x trie =
     foundLower
         | null dist = []
         | otherwise = concatMap searchLower $ anyChild trie
-    searchLower = levenSearch' cost th 1 dist x
-    m = L.length x
-    dist = mapDel cost th x 0 [(0, 0)]
+    searchLower = levenSearch' cost th 1 dist (x, m)
+    m = U.length x
+    dist = mapDel cost th (x, m) 0 [(0, 0)]
 
-levenSearch' :: (Eq a, ListLike w a)
-             => Cost a -> Thres -> Pos -> CostRow -> w
-             -> (a, Trie a b) -> [(Entry a b, Double)]
-levenSearch' cost th j distP x (c, trie) =
+levenSearch' :: Cost Char -> Thres -> Pos -> CostRow -> (Word, Pos)
+             -> (Char, Trie Char b) -> [(Entry Char b, Double)]
+levenSearch' cost th j distP (x, m) (c, trie) =
     foundHere ++ map (appendChar c) foundLower
   where
     foundHere = maybeToList $ do
@@ -55,36 +54,49 @@ levenSearch' cost th j distP x (c, trie) =
     foundLower
         | null dist = []
         | otherwise = concatMap searchLower $ anyChild trie
-    searchLower = levenSearch' cost th (j+1) dist x
+    searchLower = levenSearch' cost th (j+1) dist (x, m)
     appendChar c (Entry cs x, v) = (Entry (c:cs) x, v)
-    m = L.length x  -- ^ FIXME: O(n) !
 
-    dist = mapDel cost th x j $ merge (map' ins distP) (map' sub distP)
-    ins (i, v) = (i, v + (insert cost)  i       (j, c))
-    sub (k, v) = (i, v + (subst cost)  (i, x#i) (j, c)) where i = k+1
-    map' f xs  = [x | x@(k, v) <- map f xs, k <= m, v <= th]
+    dist = mapDel cost th (x, m) j $ merge
+        [x | x@(_, !v) <- map ins distP, v <= th]
+        [x | x@(_, !v) <- map sub distP, v <= th]
 
-mapDel :: ListLike w a => Cost a -> Thres -> w -> Pos -> CostRow -> CostRow
-mapDel cost th x j = doIt
+    ins (!i, !v) =
+        let !v' = v + (insert cost) i (j, c)
+        in  (i, v')
+    {-# INLINE ins #-}
+
+    sub (!k, !v)
+        | k < m  =
+            let !i = k + 1
+                !v' = v + (subst cost)  (i, x#i) (j, c)
+            in  (i, v')
+        | otherwise = (k, th + 1.0) -- ^ Is it faster than (i, th + 1.0)?
+    {-# INLINE sub #-}
+
+mapDel :: Cost Char -> Thres -> (Word, Pos) -> Pos
+       -> CostRow -> CostRow
+mapDel cost th (x, m) j = doIt
   where
     doIt [] = []
     doIt (x:xs) =
         let xs' = merge (x:xs) (del x)
         in  head xs' : doIt (tail xs')
-    del (i, v)
-        | k <= m && u <= th = [(k, u)]
+    del (k, v)
+        | i <= m && u <= th = [(i, u)]
         | otherwise = []
       where
-        (k, u) = (i + 1, v + (delete cost) (k, x#k) j)
-    m = L.length x  -- ^ FIXME: O(n) !
+        (i, u) = (k + 1, v + (delete cost) (i, x#i) j)
 
 merge :: CostRow -> CostRow -> CostRow
 merge xs [] = xs
 merge [] ys = ys
 merge xs@((i, v):xs') ys@((j, w):ys')
-    | i == j = (i, min v w) : merge xs' ys'
-    | i < j  = (i, v)       : merge xs' ys
-    | i > j  = (j, w)       : merge xs  ys'
+    | i == j =
+            let !u = min v w
+            in (i, u) : merge xs' ys'
+    | i < j  = (i, v) : merge xs' ys
+    | i > j  = (j, w) : merge xs  ys'
 
 maybeLast :: [a] -> Maybe a
 maybeLast [] = Nothing

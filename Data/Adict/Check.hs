@@ -17,6 +17,11 @@ import qualified Data.Map as M
 import Data.Maybe (fromJust)
 import Test.QuickCheck
 
+-- import qualified Data.Text as T
+-- import Data.ListLike.Text
+import qualified Data.Vector.Unboxed as U
+import Data.ListLike.Vector
+
 import Data.Adict
 import qualified Data.Adict.Fast as F
 
@@ -90,7 +95,7 @@ propConsistency :: CostDesc Char -> Positive Val -> String -> Lang -> Bool
 propConsistency costDesc kP x lang = eq
     [ nub (simpleSearch cost k x ys)
     , nub (levenSearch cost k x trie)
-    , nub (F.levenSearch cost k x trie) ]
+    , nub (F.levenSearch cost k (U.fromList x) trie) ]
   where
     eq xs = and [x == x' | (x, x') <- zip xs (tail xs)] 
     cost = fromDesc costDesc
