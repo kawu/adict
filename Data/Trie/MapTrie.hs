@@ -13,13 +13,10 @@ data Trie a = Trie
     , edgeMap :: M.Map Char (Trie a) }
 
 instance G.Trie Trie where
-    empty = Trie Nothing (M.fromList [])
-    anyChild Trie{..} = M.assocs edgeMap
+    mkTrie v cs = Trie v (M.fromList cs)
+    unTrie t    = (valueIn t, M.toList $ edgeMap t)
     child x Trie{..} = x `M.lookup` edgeMap
-
-    valueIn = valueIn
     setValue x t = t { valueIn = x }
-    
     subChild x trie newChild =
         let how _ = Just newChild
         in trie { edgeMap = M.alter how x (edgeMap trie) }
