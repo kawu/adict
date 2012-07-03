@@ -1,4 +1,4 @@
-module Data.Trie.Generic
+module Data.Trie.Class
 ( Trie (..)
 , size
 , follow

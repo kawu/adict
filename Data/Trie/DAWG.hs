@@ -12,12 +12,13 @@ import Control.Applicative ((<$>))
 import Data.Binary (Binary, encode, decode, get, put)
 import qualified Data.Map as M
 
-import qualified Data.Trie.Generic as G
-import Data.Trie.MapTrie
+import qualified Data.Trie.Class as C
+import Data.Trie
 
--- | We want to have Trie monad, so that we can easilly write here
--- that DAWG is also a Trie.
+-- | FIXME: For DAWG there should be another Trie-like class
+-- without operations which modify Trie structure (like mkTrie).
 newtype DAWG a = DAWG { unDAWG :: Trie a }
+    deriving (Eq, Ord, C.Trie)
 
 mkDAWG :: Ord a => Trie a -> DAWG a
 mkDAWG = deserialize . serialize
@@ -42,7 +43,7 @@ serialize :: Ord a => Trie a -> [Node a]
 serialize t = 
     [ mkNode (valueIn t)
         [ (c, m M.! s)
-        | (c, s) <- G.anyChild t ]
+        | (c, s) <- C.anyChild t ]
     | t <- M.keys m ]
   where
     m = collect t
@@ -53,7 +54,7 @@ deserialize =
     DAWG . snd . M.findMax . foldl' update M.empty
   where
     update m n =
-        let t = G.mkTrie (nodeValue n) [(c, m M.! k) | (c, k) <- nodeEdges n]
+        let t = C.mkTrie (nodeValue n) [(c, m M.! k) | (c, k) <- nodeEdges n]
         in  M.insert (M.size m) t m
 
 -- | Collect unique tries and give them identifiers.
