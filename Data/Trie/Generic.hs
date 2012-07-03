@@ -15,19 +15,19 @@ import Data.List (find, foldl')
 
 -- | Generic Trie interface.  Minimal complete definition: mkTrie and unTrie.
 class Trie t where
-    mkTrie      :: Maybe a -> [(Char, t a)] -> t a
-    unTrie      :: t a -> (Maybe a, [(Char, t a)])
+    mkTrie      :: a -> [(Char, t a)] -> t a
+    unTrie      :: t a -> (a, [(Char, t a)])
 
-    empty       :: t a
+    empty       :: t (Maybe a)
 
-    setValue    :: Maybe a -> t a -> t a
-    valueIn     :: t a -> Maybe a
+    setValue    :: a -> t a -> t a
+    valueIn     :: t a -> a
 
     anyChild    :: t a -> [(Char, t a)]
     child       :: Char -> t a -> Maybe (t a)
 
     subChild    :: Char -> t a -> t a -> t a
-    insert      :: String -> a -> t a -> t a
+    insert      :: String -> a -> t (Maybe a) -> t (Maybe a)
 
     fromTrie    :: Trie s => s a -> t a
 
@@ -53,24 +53,20 @@ class Trie t where
         | (x, s) <- anyChild t ]
 
 size :: Trie t => t a -> Int
-size t
-    | Just _ <- valueIn t   = n + 1
-    | otherwise             = n
-  where
-    n = sum $ map (size.snd) $ anyChild t
+size t = 1 + sum (map (size.snd) (anyChild t))
 
 follow :: Trie t => String -> t a -> Maybe (t a)
 follow xs t = foldr (>=>) return (map child xs) t
 
-lookup :: Trie t => String -> t a -> Maybe a
+lookup :: Trie t => String -> t (Maybe a) -> Maybe a
 lookup xs t = follow xs t >>= valueIn
 
-fromList :: Trie t => [(String, a)] -> t a
+fromList :: Trie t => [(String, a)] -> t (Maybe a)
 fromList xs =
     let update t (x, v) = insert x v t
     in  foldl' update empty xs
 
-toList :: Trie t => t a -> [(String, a)]
+toList :: Trie t => t (Maybe a) -> [(String, a)]
 toList t = case valueIn t of
     Just y -> ([], y) : lower
     Nothing -> lower
@@ -79,5 +75,5 @@ toList t = case valueIn t of
     goDown (x, t') = map (addChar x) $ toList t'
     addChar x (xs, y) = (x:xs, y)
 
-fromLang :: Trie t => [String] -> t ()
+fromLang :: Trie t => [String] -> t (Maybe ())
 fromLang xs = fromList [(x, ()) | x <- xs]
