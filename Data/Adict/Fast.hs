@@ -1,32 +1,23 @@
 {-# LANGUAGE BangPatterns #-}
 
 module Data.Adict.Fast
-( levenSearch
-, module Data.RadixTree
+( search
 ) where
 
 import Control.Monad (guard)
 import Data.Maybe (catMaybes, maybeToList)
-import Data.Ix (range)
-import qualified Data.Vector.Unboxed as U
 
-import Data.RadixTree
-import Data.Adict hiding (levenSearch)
-
-type Word = U.Vector Char
-
-(#) :: Word -> Int -> Char
-x#i = x U.! (i-1)
-{-# INLINE (#) #-}
+import Data.Trie.Class hiding (insert)
+import Data.Adict.Base
 
 type CostRow = [(Pos, Double)]
 type Thres   = Double
 
 -- | Find all words within a trie with restricted generalized edit distance
 -- lower or equall to k.
-levenSearch :: Cost Char -> Thres -> Word
-            -> Trie Char b -> [(Entry Char b, Double)]
-levenSearch cost th x trie =
+search :: Trie t => Cost Char -> Thres -> Word
+       -> t (Maybe a) -> [(Entry a, Double)]
+search cost th x trie =
     foundHere ++ foundLower
   where
     foundHere = maybeToList $ do
@@ -37,13 +28,13 @@ levenSearch cost th x trie =
     foundLower
         | null dist = []
         | otherwise = concatMap searchLower $ anyChild trie
-    searchLower = levenSearch' cost th 1 dist (x, m)
-    m = U.length x
+    searchLower = search' cost th 1 dist (x, m)
+    m = wordSize x
     dist = mapDel cost th (x, m) 0 [(0, 0)]
 
-levenSearch' :: Cost Char -> Thres -> Pos -> CostRow -> (Word, Pos)
-             -> (Char, Trie Char b) -> [(Entry Char b, Double)]
-levenSearch' cost th j distP (x, m) (c, trie) =
+search' :: Trie t => Cost Char -> Thres -> Pos -> CostRow -> (Word, Pos)
+        -> (Char, t (Maybe a)) -> [(Entry a, Double)]
+search' cost th j distP (x, m) (c, trie) =
     foundHere ++ map (appendChar c) foundLower
   where
     foundHere = maybeToList $ do
@@ -54,25 +45,25 @@ levenSearch' cost th j distP (x, m) (c, trie) =
     foundLower
         | null dist = []
         | otherwise = concatMap searchLower $ anyChild trie
-    searchLower = levenSearch' cost th (j+1) dist (x, m)
+    searchLower = search' cost th (j+1) dist (x, m)
     appendChar c (Entry cs x, v) = (Entry (c:cs) x, v)
 
     dist = mapDel cost th (x, m) j $ merge
         [x | x@(_, !v) <- map ins distP, v <= th]
         [x | x@(_, !v) <- map sub distP, v <= th]
 
+    {-# INLINE ins #-}
     ins (!i, !v) =
         let !v' = v + (insert cost) i (j, c)
         in  (i, v')
-    {-# INLINE ins #-}
 
+    {-# INLINE sub #-}
     sub (!k, !v)
         | k < m  =
             let !i = k + 1
                 !v' = v + (subst cost)  (i, x#i) (j, c)
             in  (i, v')
         | otherwise = (k, th + 1.0) -- ^ Is it faster than (i, th + 1.0)?
-    {-# INLINE sub #-}
 
 mapDel :: Cost Char -> Thres -> (Word, Pos) -> Pos
        -> CostRow -> CostRow
