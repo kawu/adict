@@ -1,3 +1,6 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module Data.Adict.Base
 ( costDefault
 , Entry (..)
@@ -5,9 +8,10 @@ module Data.Adict.Base
 , Pos
 
 , Word
+, (#)
 , wordSize
 , toString
-, (#)
+, fromString
 ) where
 
 import qualified Data.Vector.Unboxed as U
@@ -25,6 +29,9 @@ x#i = x U.! (i-1)
 
 toString :: Word -> String
 toString = U.toList
+
+fromString :: String -> Word
+fromString = U.fromList
 
 -- | Position.
 type Pos = Int

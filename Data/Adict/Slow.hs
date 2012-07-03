@@ -1,4 +1,4 @@
-module Data.Adict.Dist
+module Data.Adict.Slow
 ( search
 ) where
 

@@ -17,13 +17,14 @@ import qualified Data.Map as M
 import Data.Maybe (fromJust)
 import Test.QuickCheck
 
--- import qualified Data.Text as T
--- import Data.ListLike.Text
-import qualified Data.Vector.Unboxed as U
-import Data.ListLike.Vector
+-- import qualified Data.Vector.Unboxed as U
 
-import Data.Adict
+import qualified Data.Adict.Brute as B
+import qualified Data.Adict.Slow as S
 import qualified Data.Adict.Fast as F
+import qualified Data.Trie as T
+import qualified Data.Trie.Class as C
+import Data.Adict.Base
 
 -- | Check parameters.
 posRange  = (0, 5)	-- ^ Position of random edit op
@@ -89,19 +90,19 @@ instance Arbitrary Lang where
     arbitrary = Lang <$> arbitraryLang langRange
 
 -- | QuickCheck property: set of matching dictionary entries should
--- be the same no matter which searching function (simpleSearch or
--- optimized levenSearch) is used.
+-- be the same no matter which searching function is used.
 propConsistency :: CostDesc Char -> Positive Val -> String -> Lang -> Bool
-propConsistency costDesc kP x lang = eq
-    [ nub (simpleSearch cost k x ys)
-    , nub (levenSearch cost k x trie)
-    , nub (F.levenSearch cost k (U.fromList x) trie) ]
+propConsistency costDesc kP xR lang = eq
+    [ nub (B.search cost k x ys)
+    , nub (S.search cost k x trie)
+    , nub (F.search cost k x trie) ]
   where
+    x = fromString xR
     eq xs = and [x == x' | (x, x') <- zip xs (tail xs)] 
     cost = fromDesc costDesc
     k = getPositive kP
-    ys = [(y, ()) | y <- getWords lang]
-    trie = fromList ys
+    trie = C.fromLang (getWords lang) :: T.Trie (Maybe ())
+    ys = [(fromString y, ()) | y <- getWords lang]
 
 nub :: Ord a => [a] -> [a]
 nub = S.toList . S.fromList
