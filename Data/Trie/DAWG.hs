@@ -2,11 +2,13 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Data.Trie.DAWG
-( mkDAWG
+( DAWG (..)
+, mkDAWG
 , serialize
+, deserialize
+, collect
 ) where
 
-import Data.Foldable (foldMap)
 import Data.List (foldl')
 import Control.Applicative ((<$>))
 import Data.Binary (Binary, encode, decode, get, put)
@@ -44,9 +46,10 @@ serialize t =
     [ mkNode (valueIn t)
         [ (c, m M.! s)
         | (c, s) <- C.anyChild t ]
-    | t <- M.keys m ]
+    | t <- M.elems $ reverseMap m ]
   where
     m = collect t
+    reverseMap m = M.fromList [(y, x) | (x, y) <- M.toList m]
 
 -- | FIXME: Null node list case.
 deserialize :: Ord a => [Node a] -> DAWG a
@@ -59,9 +62,12 @@ deserialize =
 
 -- | Collect unique tries and give them identifiers.
 collect :: Ord a => Trie a -> M.Map (Trie a) Int
-collect t =
-    let !m = foldMap collect (edgeMap t)
-        !k = M.size m + 1
-        f Nothing  = Just k
-        f (Just x) = Just x
-    in  M.alter f t m
+collect t = collect' M.empty t
+
+collect' :: Ord a => M.Map (Trie a) Int -> Trie a -> M.Map (Trie a) Int
+collect' m0 t = M.alter f t m
+  where
+    !m = foldl' collect' m0 (M.elems $ edgeMap t)
+    !k = M.size m
+    f Nothing  = Just k
+    f (Just x) = Just x
