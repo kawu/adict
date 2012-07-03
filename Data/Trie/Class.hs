@@ -1,5 +1,6 @@
 module Data.Trie.Class
 ( Trie (..)
+, TrieM (..)
 , size
 , follow
 , lookup

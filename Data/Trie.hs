@@ -20,6 +20,8 @@ data Trie a = Trie
     , edgeMap :: M.Map Char (Trie a) }
     deriving (Eq, Ord)
 
+-- | TODO: Add Functor, Foldable and Traversable instances to
+-- Trie.Class module.
 instance Functor Trie where
     fmap f Trie{..} = Trie (f valueIn) (fmap (fmap f) edgeMap)
 
@@ -27,9 +29,11 @@ instance Foldable Trie where
     foldMap f Trie{..} = foldMap (foldMap f) edgeMap <> f valueIn
 
 instance C.Trie Trie where
-    mkTrie !v !cs = Trie v (M.fromList cs)
     unTrie t    = (valueIn t, M.toList $ edgeMap t)
     child x Trie{..} = x `M.lookup` edgeMap
+
+instance C.TrieM Trie where
+    mkTrie !v !cs = Trie v (M.fromList cs)
     setValue !x !t = t { valueIn = x }
     subChild !x !trie !newChild =
         let how _ = Just newChild
