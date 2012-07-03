@@ -9,9 +9,11 @@ module Data.Trie.MapTrie
 ) where
 
 import Data.List (foldl')
-import qualified Data.Map as M
+import Control.Applicative ((<$>), (<*>))
 import Data.Monoid ((<>), Sum (..))
 import Data.Foldable (Foldable, foldMap)
+import Data.Binary (Binary, encode, decode, get, put)
+import qualified Data.Map as M
 
 import qualified Data.Trie.Generic as G
 
@@ -20,12 +22,11 @@ data Trie a = Trie
     , edgeMap :: M.Map Char (Trie a) }
     deriving (Eq, Ord)
 
--- | Pattern functor is indeed a functor.
 instance Functor Trie where
     fmap f Trie{..} = Trie (f valueIn) (fmap (fmap f) edgeMap)
 
 instance Foldable Trie where
-    foldMap f Trie{..} = f valueIn <> foldMap (foldMap f) edgeMap
+    foldMap f Trie{..} = foldMap (foldMap f) edgeMap <> f valueIn
 
 instance G.Trie Trie where
     mkTrie !v !cs = Trie v (M.fromList cs)
@@ -39,6 +40,12 @@ instance G.Trie Trie where
 
 instance Show a => Show (Trie (Maybe a)) where
     show = show . G.toList
+
+instance Binary a => Binary (Trie a) where
+    put Trie{..} = do
+        put valueIn
+        put edgeMap
+    get = Trie <$> get <*> get
 
 size :: Trie a -> Int
 size = getSum . foldMap (const $ Sum 1)
