@@ -3,9 +3,9 @@
 
 module Data.Adict.Base
 ( costDefault
-, Entry (..)
 , Cost (..)
 , Pos
+, Entry (..)
 
 , Word
 , (#)

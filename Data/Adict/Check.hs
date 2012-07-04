@@ -17,20 +17,19 @@ import qualified Data.Map as M
 import Data.Maybe (fromJust)
 import Test.QuickCheck
 
--- import qualified Data.Vector.Unboxed as U
-
 import qualified Data.Adict.Brute as B
 import qualified Data.Adict.Slow as S
 import qualified Data.Adict.Fast as F
+import qualified Data.Adict.Graph as G
 import qualified Data.Trie as T
 import qualified Data.Trie.Class as C
 import Data.Adict.Base
 
 -- | Check parameters.
-posRange  = (0, 5)	-- ^ Position of random edit op
+posRange  = (0, 4)	-- ^ Position of random edit op
 valRange  = (0, 10)	-- ^ Weight of edit op 
-descRange = (0, 250)	-- ^ Number of random edit ops of given type
-langRange = (0, 250)	-- ^ Size of language
+descRange = (0, 25)	-- ^ Number of random edit ops of given type
+langRange = (0, 25)	-- ^ Size of language
 
 -- | Simple type synonym for (Pos, a).
 type P a = (Pos, a)
@@ -95,8 +94,13 @@ propConsistency :: CostDesc Char -> Positive Val -> String -> Lang -> Bool
 propConsistency costDesc kP xR lang = eq
     [ nub (B.search cost k x ys)
     , nub (S.search cost k x trie)
-    , nub (F.search cost k x trie) ]
+    , nub (F.search cost k x trie)
+    , nub (G.search cost k x trie) ]
   where
+
+    y1 = nub (B.search cost k x ys)
+    y2 = nub (G.search cost k x trie)
+
     x = fromString xR
     eq xs = and [x == x' | (x, x') <- zip xs (tail xs)] 
     cost = fromDesc costDesc
