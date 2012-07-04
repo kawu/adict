@@ -12,6 +12,8 @@ module Data.Adict.Base
 , wordSize
 , toString
 , fromString
+
+, Thres
 ) where
 
 import qualified Data.Vector.Unboxed as U
@@ -69,3 +71,7 @@ instance Ord (Entry a) where
 
 instance Functor Entry where
     fmap f (Entry word info) = Entry word (f info)
+
+-- | Type synonym for threshold.
+type Thres = Double
+
