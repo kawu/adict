@@ -5,11 +5,15 @@ module Data.Adict.CostVect
 , minCost
 , initVect
 , nextVect
+, match
 ) where
 
+import Control.Monad (guard)
 import Data.Function (on)
+import Data.Maybe (maybeToList)
 import Data.List (minimumBy)
 
+import Data.Trie.Class (Trie, valueIn)
 import Data.Adict.Base
 
 -- | Edit distance vector for some trie node.
@@ -64,3 +68,18 @@ merge xs@((i, v):xs') ys@((j, w):ys')
             in (i, u) : merge xs' ys'
     | i < j  = (i, v) : merge xs' ys
     | i > j  = (j, w) : merge xs  ys'
+
+-- | Return 1 element list with matching Entry, if entries edit
+-- distance is not greater than threshold. Otherwise, return
+-- empty list.
+match :: Trie t => Word -> t (Maybe a) -> CostVect
+      -> String -> [(Entry a, Double)]
+match x trie costVect path = maybeToList $ do
+    v <- valueIn trie
+    (k, dist) <- maybeLast costVect
+    guard (k == wordSize x)
+    return (Entry path v, dist)
+
+maybeLast :: [a] -> Maybe a
+maybeLast [] = Nothing
+maybeLast xs = Just $ last xs
