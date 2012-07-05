@@ -151,4 +151,4 @@ thresConst th x = th
 -- some margin above the match distance will be searched
 -- afterwards.
 thresMargin :: Double -> Double -> ThresMod
-thresMargin base k th x = min th (base + x*k)
+thresMargin base k th x = min th ((base+x)*(1+k))

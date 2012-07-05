@@ -1,26 +1,29 @@
 Name:               adict
-Version:            0.0.1
+Version:            0.0.2
 Synopsis:           Approximate dictionary searching
 License:            BSD3
 License-file:       LICENSE
 Author:             Jakub Waszczuk
 Maintainer:         waszczuk.kuba@gmail.com
 Build-type:         Simple
-Exposed-modules:    Data.RadixTree
+Exposed-modules:    Data.Trie
+		    Data.Trie.Class
+		    Data.DAWG
+		    Data.DAWG.Node
+		    Data.DAWG.Array
 		    Data.Adict
+		    Data.Adict.Base
+		    Data.Adict.Dist
+		    Data.Adict.CostVect
+		    Data.Adict.Brute
+		    Data.Adict.Slow
 		    Data.Adict.Fast
+		    Data.Adict.Graph
 		    Data.Adict.Check
 		    Data.Adict.Extended
 Build-Depends:      base
                   , containers
-		  , text
-		  , ListLike
-		  , listlike-instances
-		  , array
 		  , vector
 		  , binary
 		  , vector-binary
-		  , parallel
 		  , QuickCheck
-		  , criterion
-		  , random
