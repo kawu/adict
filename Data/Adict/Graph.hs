@@ -41,22 +41,22 @@ instance Ord (Node t) where
 type PQueue t a = S.Set (Node (t (Maybe a)))
 
 -- | TODO: Simplify by defining Entry a as (Entry a, Double).
-search :: Trie t => t (Maybe a) -> Adict [(Entry a, Double)]
-search trie = do 
+search :: Trie t => ThresMod -> t (Maybe a) -> Adict [(Entry a, Double)]
+search thMod trie = do 
     costVect <- initVect
-    search' $ S.singleton $ Node trie [] costVect 0
+    search' thMod $ S.singleton $ Node trie [] costVect 0
 
-search' :: Trie t => PQueue t a -> Adict [(Entry a, Double)]
-search' q
+search' :: Trie t => ThresMod -> PQueue t a -> Adict [(Entry a, Double)]
+search' thMod q
     | S.null q  = return []
     | otherwise = do
         let (n, q') = fromJust $ S.minView q
-        -- record $ "visiting: \"" ++ reverse (path n) ++ "\""
-        -- record $ ", min cost: " ++ show (snd $ minCost $ costVect n)
-        -- record $ ", queue size: " ++ show (S.size q) ++ "\n"
+        -- tell $ "visiting: \"" ++ reverse (path n) ++ "\""
+        -- tell $ ", min cost: " ++ show (snd $ minCost $ costVect n)
+        -- tell $ ", queue size: " ++ show (S.size q) ++ "\n"
         ns <- successors n
-        (++) <$> match (trie n) (costVect n) (reverse $ path n)
-             <*> search' (foldl' (flip S.insert) q' ns)
+        (++) <$> matchMod thMod (trie n) (costVect n) (reverse $ path n)
+             <*> search' thMod (foldl' (flip S.insert) q' ns)
 
 successors :: Trie t => Node (t a) -> Adict [Node (t a)]
 successors Node{..} = runListT $ do

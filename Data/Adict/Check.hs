@@ -95,7 +95,7 @@ propConsistency costDesc kP xR lang = eq
     [ nub (B.search cost k x ys)
     , nub (S.search cost k x trie)
     , nub (evalAdict cost k x (F.search trie))
-    , nub (evalAdict cost k x (G.search trie)) ]
+    , nub (evalAdict cost k x (G.search thresConst trie)) ]
   where
     x = fromString xR
     eq xs = and [x == x' | (x, x') <- zip xs (tail xs)] 

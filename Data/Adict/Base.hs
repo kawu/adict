@@ -4,7 +4,6 @@
 module Data.Adict.Base
 ( costDefault
 , Cost (..)
-, Thres
 , Pos
 , Entry (..)
 
@@ -20,16 +19,25 @@ module Data.Adict.Base
 , execAdict
 , cost
 , thres
+, setThres
+, modThres
 , word
 , wordSize
-, record
+, tell
+
+, Thres
+, ThresMod
+, thresConst
+, thresMargin
 ) where
 
 import Control.Applicative ((<$>), (<*>))
 import qualified Data.Vector.Unboxed as U
 import Control.Monad.Trans (lift)
-import Control.Monad.Reader (ReaderT, runReaderT, ask)
-import Control.Monad.Writer (Writer, runWriter, tell)
+import Control.Monad.RWS (runRWS, RWS)
+import Control.Monad.State.Class (get, put, modify)
+import Control.Monad.Reader.Class (ask)
+import Control.Monad.Writer.Class (tell)
 
 -- | Word type.
 type Word = U.Vector Char
@@ -85,23 +93,21 @@ instance Ord (Entry a) where
 instance Functor Entry where
     fmap f (Entry path info) = Entry path (f info)
 
--- | Type synonym for threshold.
-type Thres = Double
-
--- | Rearder monad for storage of information unchanging throughout
--- the search.
-type Adict a = ReaderT SearchInfo (Writer String) a
+-- | Monad for approximate dictionary searching:
+-- * SearchInfo environment,
+-- * String log,
+-- * State consist of a current threshold.
+type Adict a = RWS SearchInfo String Thres a
 
 data SearchInfo = SearchInfo
     { searchCost     :: Cost Char
-    , searchThres    :: Thres
     , searchWord     :: Word
     , searchWordSize :: Int }
 
 runAdict :: Cost Char -> Thres -> Word -> Adict a -> (a, String)
-runAdict cost th x adict
-    = runWriter $ runReaderT adict
-    $ SearchInfo cost th x (wordLength x)
+runAdict cost th x adict =
+    let ~(r, _, w) = runRWS adict (SearchInfo cost x (wordLength x)) th
+    in  (r, w)
 
 evalAdict :: Cost Char -> Thres -> Word -> Adict a -> a
 evalAdict cost th x = fst . runAdict cost th x
@@ -112,14 +118,37 @@ execAdict cost th x = snd . runAdict cost th x
 cost :: Adict (Cost Char)
 cost = searchCost <$> ask
 
-thres :: Adict Thres
-thres = searchThres <$> ask
-
 word :: Adict Word
 word = searchWord <$> ask
 
 wordSize :: Adict Int
 wordSize = searchWordSize <$> ask
 
-record :: String -> Adict ()
-record = lift . tell
+thres :: Adict Thres
+thres = get
+
+-- | TODO: Perhaps it should be made strict. Check, if it would
+-- make computation faster.
+setThres :: Thres -> Adict ()
+setThres = put
+
+modThres :: (Thres -> Thres) -> Adict ()
+modThres = modify
+
+-- | Changing threshold, when a match was found. It can be assumed,
+-- that distance to a matched word (second argument) is not greater
+-- than threshold (first argument).
+type ThresMod = Thres -> Thres -> Thres
+
+-- | Type synonym for threshold.
+type Thres = Double
+
+-- | Do not change threshold.
+thresConst :: ThresMod
+thresConst th x = th
+
+-- | When a match is found, lower the threshold so that only
+-- some margin above the match distance will be searched
+-- afterwards.
+thresMargin :: Double -> Double -> ThresMod
+thresMargin base k th x = min th (base + x*k)

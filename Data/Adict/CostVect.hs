@@ -6,10 +6,11 @@ module Data.Adict.CostVect
 , initVect
 , nextVect
 , match
+, matchMod
 ) where
 
 import Control.Applicative ((<$>), (<*>))
-import Control.Monad (guard)
+import Control.Monad (guard, when)
 import Data.Function (on)
 import Data.Maybe (maybeToList)
 import Data.List (minimumBy)
@@ -92,6 +93,21 @@ match trie costVect path =
         (k, dist) <- maybeLast costVect
         guard (k == m)
         return (Entry path v, dist)
+
+matchMod :: Trie t => ThresMod -> t (Maybe a) -> CostVect
+         -> String -> Adict [(Entry a, Double)]
+matchMod thMod trie costVect path = do
+    xs <- match trie costVect path
+    case xs of
+        [(entry, dist)] -> do
+            -- th <- B.thres
+            -- let thNew = thMod th dist
+            -- when (thNew < th) $ do
+            --     tell $ "change threshold from " ++ show th
+            --         ++ " to " ++ show thNew ++ "\n"
+            B.modThres (\th -> thMod th dist)
+        [] -> return ()
+    return xs
 
 maybeLast :: [a] -> Maybe a
 maybeLast [] = Nothing
