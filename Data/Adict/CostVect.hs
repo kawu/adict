@@ -100,11 +100,12 @@ matchMod thMod trie costVect path = do
     xs <- match trie costVect path
     case xs of
         [(entry, dist)] -> do
-            -- th <- B.thres
-            -- let thNew = thMod th dist
-            -- when (thNew < th) $ do
-            --     tell $ "change threshold from " ++ show th
-            --         ++ " to " ++ show thNew ++ "\n"
+            th <- B.thres
+            tell $ "match: " ++ show dist ++ " ; th = " ++ show th ++ "\n"
+            let thNew = thMod th dist
+            when (thNew < th) $ do
+                tell $ "change threshold from " ++ show th
+                    ++ " to " ++ show thNew ++ "\n"
             B.modThres (\th -> thMod th dist)
         [] -> return ()
     return xs

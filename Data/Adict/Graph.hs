@@ -47,16 +47,41 @@ search thMod trie = do
     search' thMod $ S.singleton $ Node trie [] costVect 0
 
 search' :: Trie t => ThresMod -> PQueue t a -> Adict [(Entry a, Double)]
-search' thMod q
-    | S.null q  = return []
+search' thMod q = do
+    (n, q') <- popNode q
+    case n of
+        Nothing -> return []
+        Just n  -> do
+            tell $ "visiting: \"" ++ reverse (path n) ++ "\""
+            tell $ ", min cost: " ++ show (snd $ minCost $ costVect n)
+            tell $ ", queue size: " ++ show (S.size q) ++ "\n"
+            ns <- successors n
+            (++) <$> matchMod thMod (trie n) (costVect n) (reverse $ path n)
+                 <*> search' thMod (foldl' (flip S.insert) q' ns)
+
+-- | TODO: Move PQueue to Adict State. BUT: Adict.Fast is not using
+-- queue, while i uses Adict!
+
+-- | TODO: If first check yields Nothing, then all the other also
+-- will yield nothing. Thus, this function does more work than it
+-- has to!
+popNode :: Trie t => PQueue t a
+        -> Adict (Maybe (Node (t (Maybe a))), PQueue t a)
+popNode q
+    | S.null q  = return (Nothing, q)
     | otherwise = do
         let (n, q') = fromJust $ S.minView q
-        -- tell $ "visiting: \"" ++ reverse (path n) ++ "\""
-        -- tell $ ", min cost: " ++ show (snd $ minCost $ costVect n)
-        -- tell $ ", queue size: " ++ show (S.size q) ++ "\n"
-        ns <- successors n
-        (++) <$> matchMod thMod (trie n) (costVect n) (reverse $ path n)
-             <*> search' thMod (foldl' (flip S.insert) q' ns)
+        th <- thres
+        case checkNode th n of
+            Just n  -> return (Just n, q')
+            Nothing -> popNode q'
+
+checkNode :: Thres -> Node t -> Maybe (Node t)
+checkNode th node@Node{..}
+    | null costVect' = Nothing
+    | otherwise      = Just $ node { costVect = costVect' }
+  where
+    costVect' = filter ((<=th).snd) costVect
 
 successors :: Trie t => Node (t a) -> Adict [Node (t a)]
 successors Node{..} = runListT $ do

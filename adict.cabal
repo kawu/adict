@@ -20,10 +20,11 @@ Exposed-modules:    Data.Trie
 		    Data.Adict.Fast
 		    Data.Adict.Graph
 		    Data.Adict.Check
-		    Data.Adict.Extended
 Build-Depends:      base
                   , containers
 		  , vector
+		  , array
 		  , binary
 		  , vector-binary
 		  , QuickCheck
+		  , mtl
