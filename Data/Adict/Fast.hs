@@ -4,33 +4,30 @@ module Data.Adict.Fast
 ( search
 ) where
 
+import Control.Applicative (pure, (<$>), (<*>))
+
 import Data.Trie.Class hiding (insert)
 import Data.Adict.Base
 import Data.Adict.CostVect
 
 -- | Find all words within a trie with restricted generalized edit distance
 -- lower or equall to k.
-search :: Trie t => Cost Char -> Thres -> Word
-       -> t (Maybe a) -> [(Entry a, Double)]
-search cost th x trie =
-    here ++ lower
-  where
-    here = match x trie dist []
-    lower
-        | null dist = []
-        | otherwise = concatMap searchLower $ anyChild trie
-    searchLower = search' cost th 1 dist x
-    dist = initVect cost th x
+search :: Trie t => t (Maybe a) -> Adict [(Entry a, Double)]
+search trie = do
+    dist <- initVect
+    lower <- concatMapM (search' 1 dist) (anyChild trie)
+    (++) <$> match trie dist [] <*> pure lower
 
-search' :: Trie t => Cost Char -> Thres -> Pos -> CostVect -> Word
-        -> (Char, t (Maybe a)) -> [(Entry a, Double)]
-search' cost th j distP x (c, trie) =
-    here ++ map (appendChar c) lower
-  where
-    here = match x trie dist [c]
-    lower
-        | null dist = []
-        | otherwise = concatMap searchLower $ anyChild trie
-    searchLower = search' cost th (j+1) dist x
-    appendChar c (Entry cs x, v) = (Entry (c:cs) x, v)
-    dist = nextVect cost th x j c distP
+search' :: Trie t => Pos -> CostVect -> (Char, t (Maybe a))
+        -> Adict [(Entry a, Double)]
+search' j distP (c, trie) = do
+    dist <- nextVect j c distP
+    here <- match trie dist [c]
+    lower <- if null dist
+        then return []
+        else concatMapM (search' (j+1) dist) (anyChild trie)
+    let appendChar c (Entry cs x, v) = (Entry (c:cs) x, v)
+    return (here ++ map (appendChar c) lower)
+
+concatMapM :: (Functor m, Monad m) => (a -> m [b]) -> [a] -> m [b]
+concatMapM f xs = concat <$> mapM f xs

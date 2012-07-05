@@ -16,8 +16,8 @@ editDist cost x y =
     dist' i j = distA A.! (i, j)
     distA = A.array bounds [(k, uncurry dist k) | k <- range bounds]
     bounds  = ((0, 0), (m, n))
-    m = wordSize x
-    n = wordSize y
+    m = wordLength x
+    n = wordLength y
 
     dist 0 0 = 0
     dist i 0 = dist' (i-1) 0 + (delete cost) (i, x#i)  0

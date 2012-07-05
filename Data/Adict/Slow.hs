@@ -28,7 +28,7 @@ search cost k x trie =
     dist' = (A.!) distV 
     distV = A.array bounds [(i, dist i) | i <- range bounds]
     bounds = (0, m)
-    m = wordSize x
+    m = wordLength x
 
     dist 0 = 0
     dist i = dist' (i-1) + (delete cost) (i, x#i) 0
@@ -52,7 +52,7 @@ search' cost k j distP x (c, trie) =
     dist' = (A.!) distV 
     distV = A.array bounds [(i, dist i) | i <- range bounds]
     bounds  = (0, m)
-    m = wordSize x
+    m = wordLength x
 
     dist 0 = distP 0  + (insert cost)  0       (j, c)
     dist i = minimum

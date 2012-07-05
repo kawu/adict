@@ -94,13 +94,9 @@ propConsistency :: CostDesc Char -> Positive Val -> String -> Lang -> Bool
 propConsistency costDesc kP xR lang = eq
     [ nub (B.search cost k x ys)
     , nub (S.search cost k x trie)
-    , nub (F.search cost k x trie)
-    , nub (G.search cost k x trie) ]
+    , nub (evalAdict cost k x (F.search trie))
+    , nub (evalAdict cost k x (G.search trie)) ]
   where
-
-    y1 = nub (B.search cost k x ys)
-    y2 = nub (G.search cost k x trie)
-
     x = fromString xR
     eq xs = and [x == x' | (x, x') <- zip xs (tail xs)] 
     cost = fromDesc costDesc

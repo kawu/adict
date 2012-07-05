@@ -4,26 +4,39 @@
 module Data.Adict.Base
 ( costDefault
 , Cost (..)
+, Thres
 , Pos
 , Entry (..)
 
 , Word
 , (#)
-, wordSize
+, wordLength
 , toString
 , fromString
 
-, Thres
+, Adict
+, runAdict
+, evalAdict
+, execAdict
+, cost
+, thres
+, word
+, wordSize
+, record
 ) where
 
+import Control.Applicative ((<$>), (<*>))
 import qualified Data.Vector.Unboxed as U
+import Control.Monad.Trans (lift)
+import Control.Monad.Reader (ReaderT, runReaderT, ask)
+import Control.Monad.Writer (Writer, runWriter, tell)
 
 -- | Word type.
 type Word = U.Vector Char
 
-{-# INLINE wordSize #-}
-wordSize :: Word -> Int
-wordSize = U.length
+{-# INLINE wordLength #-}
+wordLength :: Word -> Int
+wordLength = U.length
 
 {-# INLINE (#) #-}
 (#) :: Word -> Int -> Char
@@ -59,7 +72,7 @@ costDefault =
 
 -- | Dinctionary entry.
 data Entry a = Entry
-    { word :: String
+    { path :: String
     , info :: a }
     deriving Show
 
@@ -70,8 +83,43 @@ instance Ord (Entry a) where
     Entry x _ <= Entry y _ = x <= y
 
 instance Functor Entry where
-    fmap f (Entry word info) = Entry word (f info)
+    fmap f (Entry path info) = Entry path (f info)
 
 -- | Type synonym for threshold.
 type Thres = Double
 
+-- | Rearder monad for storage of information unchanging throughout
+-- the search.
+type Adict a = ReaderT SearchInfo (Writer String) a
+
+data SearchInfo = SearchInfo
+    { searchCost     :: Cost Char
+    , searchThres    :: Thres
+    , searchWord     :: Word
+    , searchWordSize :: Int }
+
+runAdict :: Cost Char -> Thres -> Word -> Adict a -> (a, String)
+runAdict cost th x adict
+    = runWriter $ runReaderT adict
+    $ SearchInfo cost th x (wordLength x)
+
+evalAdict :: Cost Char -> Thres -> Word -> Adict a -> a
+evalAdict cost th x = fst . runAdict cost th x
+
+execAdict :: Cost Char -> Thres -> Word -> Adict a -> String
+execAdict cost th x = snd . runAdict cost th x
+
+cost :: Adict (Cost Char)
+cost = searchCost <$> ask
+
+thres :: Adict Thres
+thres = searchThres <$> ask
+
+word :: Adict Word
+word = searchWord <$> ask
+
+wordSize :: Adict Int
+wordSize = searchWordSize <$> ask
+
+record :: String -> Adict ()
+record = lift . tell

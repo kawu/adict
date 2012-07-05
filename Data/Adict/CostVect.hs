@@ -8,13 +8,15 @@ module Data.Adict.CostVect
 , match
 ) where
 
+import Control.Applicative ((<$>), (<*>))
 import Control.Monad (guard)
 import Data.Function (on)
 import Data.Maybe (maybeToList)
 import Data.List (minimumBy)
 
 import Data.Trie.Class (Trie, valueIn)
-import Data.Adict.Base
+import Data.Adict.Base hiding (cost, thres, word, wordSize)
+import qualified Data.Adict.Base as B
 
 -- | Edit distance vector for some trie node.
 type CostVect = [(Pos, Double)]
@@ -23,41 +25,49 @@ type CostVect = [(Pos, Double)]
 minCost :: CostVect -> (Pos, Double)
 minCost = minimumBy (compare `on` snd)
 
-initVect :: Cost Char -> Thres -> Word -> CostVect
-initVect cost th x = mapDel cost th x 0 [(0, 0)]
+initVect :: Adict CostVect
+initVect = mapDel 0 [(0, 0)]
 
-nextVect :: Cost Char -> Thres -> Word -> Pos -> Char -> CostVect -> CostVect
-nextVect cost th x j c costVect = mapDel cost th x j $ merge
-    [x | x@(_, !v) <- map ins costVect, v <= th]
-    [x | x@(_, !v) <- map sub costVect, v <= th]
+nextVect :: Pos -> Char -> CostVect -> Adict CostVect
+nextVect j c costVect = do
+    cost <- B.cost
+    th   <- B.thres
+    word <- B.word
+    m    <- B.wordSize
+    doWith cost th word m
   where
-    m = wordSize x
-    {-# INLINE ins #-}
-    ins (!i, !v) =
-        let !v' = v + (insert cost) i (j, c)
-        in  (i, v')
-    {-# INLINE sub #-}
-    sub (!k, !v)
-        | k < m  =
-            let !i = k + 1
-                !v' = v + (subst cost)  (i, x#i) (j, c)
-            in  (i, v')
-        | otherwise = (k, th + 1.0) -- ^ Is it faster than (i, th + 1.0)?
-
-mapDel :: Cost Char -> Thres -> Word -> Pos -> CostVect -> CostVect
-mapDel cost th w j = doIt
-  where
-    doIt []     = []
-    doIt (x:xs) =
-        let xs' = merge (x:xs) (del x)
-        in  head xs' : doIt (tail xs')
-    m = wordSize w
-    {-# INLINE del #-}
-    del (k, v)
-        | i <= m && u <= th = [(i, u)]
-        | otherwise = []
+    doWith cost th x m = mapDel j $ merge
+        [x | x@(_, !v) <- map ins costVect, v <= th]
+        [x | x@(_, !v) <- map sub costVect, v <= th]
       where
-        (i, u) = (k + 1, v + (delete cost) (i, w#i) j)
+        {-# INLINE ins #-}
+        ins (!i, !v) =
+            let !v' = v + (insert cost) i (j, c)
+            in  (i, v')
+        {-# INLINE sub #-}
+        sub (!k, !v)
+            | k < m  =
+                let !i = k + 1
+                    !v' = v + (subst cost)  (i, x#i) (j, c)
+                in  (i, v')
+            | otherwise = (k, th + 1.0) -- ^ Is it faster than (i, th + 1.0)?
+
+mapDel :: Pos -> CostVect -> Adict CostVect
+mapDel j xs =
+    doWith <$> B.cost <*> B.thres <*> B.word <*> B.wordSize
+  where
+    doWith cost th x m = doIt xs
+      where
+        doIt []     = []
+        doIt (x:xs) =
+            let xs' = merge (x:xs) (del x)
+            in  head xs' : doIt (tail xs')
+        {-# INLINE del #-}
+        del (k, v)
+            | i <= m && u <= th = [(i, u)]
+            | otherwise = []
+          where
+            (i, u) = (k + 1, v + (delete cost) (i, x#i) j)
 
 merge :: CostVect -> CostVect -> CostVect
 merge xs [] = xs
@@ -72,13 +82,16 @@ merge xs@((i, v):xs') ys@((j, w):ys')
 -- | Return 1 element list with matching Entry, if entries edit
 -- distance is not greater than threshold. Otherwise, return
 -- empty list.
-match :: Trie t => Word -> t (Maybe a) -> CostVect
-      -> String -> [(Entry a, Double)]
-match x trie costVect path = maybeToList $ do
-    v <- valueIn trie
-    (k, dist) <- maybeLast costVect
-    guard (k == wordSize x)
-    return (Entry path v, dist)
+match :: Trie t => t (Maybe a) -> CostVect
+      -> String -> Adict [(Entry a, Double)]
+match trie costVect path =
+    doWith <$> B.word <*> B.wordSize
+  where
+    doWith x m = maybeToList $ do
+        v <- valueIn trie
+        (k, dist) <- maybeLast costVect
+        guard (k == m)
+        return (Entry path v, dist)
 
 maybeLast :: [a] -> Maybe a
 maybeLast [] = Nothing

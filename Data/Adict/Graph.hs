@@ -5,13 +5,16 @@ module Data.Adict.Graph
 ) where
 
 import Control.Applicative ((<$>), (<*>))
+import Control.Monad.List (runListT, ListT(..))
+import Control.Monad (guard)
+import Control.Monad.Trans (lift)
 import Data.Function (on)
 import Data.Maybe (fromJust, catMaybes)
 import Data.List (foldl')
 import qualified Data.Set as S
 
 import Data.Trie.Class hiding (insert)
-import Data.Adict.Base
+import Data.Adict.Base hiding (path)
 import Data.Adict.CostVect
 
 -- | Graph node.
@@ -38,33 +41,28 @@ instance Ord (Node t) where
 type PQueue t a = S.Set (Node (t (Maybe a)))
 
 -- | TODO: Simplify by defining Entry a as (Entry a, Double).
-search :: Trie t => Cost Char -> Thres -> Word
-       -> t (Maybe a) -> [(Entry a, Double)]
-search cost th x trie =
-    here ++ lower
-  where
-    costVect = initVect cost th x
-    queue = S.singleton (Node trie [] costVect 0)
-    here = match x trie costVect []
-    lower = search' cost th x queue
+search :: Trie t => t (Maybe a) -> Adict [(Entry a, Double)]
+search trie = do 
+    costVect <- initVect
+    search' $ S.singleton $ Node trie [] costVect 0
 
-search' :: Trie t => Cost Char -> Thres -> Word 
-        -> PQueue t a -> [(Entry a, Double)]
-search' cost th x q
-    | S.null q  = []
-    | otherwise = here ++ lower
-  where
-    (n, q') = fromJust $ S.minView q
-    q'' = foldl' (flip S.insert) q' (successors cost th x n)
-    here = match x (trie n) (costVect n) (reverse $ path n)
-    lower = search' cost th x q''
+search' :: Trie t => PQueue t a -> Adict [(Entry a, Double)]
+search' q
+    | S.null q  = return []
+    | otherwise = do
+        let (n, q') = fromJust $ S.minView q
+        -- record $ "visiting: \"" ++ reverse (path n) ++ "\""
+        -- record $ ", min cost: " ++ show (snd $ minCost $ costVect n)
+        -- record $ ", queue size: " ++ show (S.size q) ++ "\n"
+        ns <- successors n
+        (++) <$> match (trie n) (costVect n) (reverse $ path n)
+             <*> search' (foldl' (flip S.insert) q' ns)
 
-successors :: Trie t => Cost Char -> Thres -> Word
-           -> Node (t a) -> [Node (t a)]
-successors cost th x Node{..} = catMaybes
-    [ case compVect c costVect of
-        [] -> Nothing
-        xs -> Just $ Node t (c:path) xs (depth+1)
-    | (c, t) <- anyChild trie ]
+successors :: Trie t => Node (t a) -> Adict [Node (t a)]
+successors Node{..} = runListT $ do
+    (c, t) <- list (anyChild trie)
+    costVect' <- lift (nextVect (depth+1) c costVect)
+    guard . not . null $ costVect'
+    return $ Node t (c:path) costVect' (depth+1)
   where
-    compVect = nextVect cost th x (depth+1)
+    list = ListT . return
