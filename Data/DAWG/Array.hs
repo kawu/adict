@@ -4,9 +4,15 @@
 
 module Data.DAWG.Array
 ( DAWGArray (..)
+, DAWGRow (..)
+, size
+, row
+, edges
+, entry
 ) where
 
 import Control.Applicative ((<$>))
+import Data.Maybe (listToMaybe)
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import Data.Binary (Binary, get, put)
@@ -18,9 +24,25 @@ data DAWGArray a = DAWGArray
     { root  :: Int
     , array :: V.Vector (DAWGRow a) }
 
+size :: DAWGArray a -> Int
+size = V.length . array
+
+row :: DAWGArray a -> Int -> DAWGRow a
+row dag k = array dag V.! k
+
 data DAWGRow a  = DAWGRow
     { valueIn :: a
     , edgeVec :: U.Vector (Char, Int) }
+
+entry :: DAWGArray (Maybe a) -> [Int] -> Maybe (String, a)
+entry dag xs = do
+    x <- mapM (charOn dag) (zip (root dag:xs) xs)
+    r <- C.lookup x dag
+    return (x, r)
+
+charOn :: DAWGArray a -> (Int, Int) -> Maybe Char
+charOn dag (root, x) = listToMaybe
+    [c | (c, y) <- edges dag root, x == y]
 
 serialize :: Ord a => DAWGArray a -> [N.Node a]
 serialize = map unRow . V.toList . array
@@ -44,6 +66,10 @@ instance (Ord a, Binary a) => Binary (DAWGArray a) where
 goDown :: DAWGArray a -> Int -> DAWGArray a
 goDown DAWGArray{..} k = DAWGArray k array
 
+edges :: DAWGArray a -> Int -> [(Char, Int)]
+edges dag k =
+    U.toList $ edgeVec (row dag k)
+
 instance C.Trie DAWGArray where
     unTrie dag@DAWGArray{..} =
         let row = array V.! root
@@ -53,4 +79,3 @@ instance C.Trie DAWGArray where
     child x dag@DAWGArray{..} =
         let row = array V.! root
         in  goDown dag <$> snd <$> U.find ((x==).fst) (edgeVec row)
-                
