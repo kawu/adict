@@ -21,6 +21,7 @@ Exposed-modules:    Data.Trie
 		    Data.Adict.Graph
 		    Data.Adict.Check
 		    Data.Graph.ShortestPath
+		    Data.Graph.ShortestPath2
 		    Data.DAWG.Adict
 Build-Depends:      base
                   , containers
@@ -31,3 +32,4 @@ Build-Depends:      base
 		  , QuickCheck
 		  , mtl
 		  , PSQueue
+		  , pqueue

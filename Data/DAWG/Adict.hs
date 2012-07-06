@@ -8,14 +8,14 @@ import Data.List (group)
 import Data.Adict.Base
 import Data.DAWG.Array
 -- import Data.Graph.ShortestPath hiding (path)
-import Data.Graph.ShortestPath
-import qualified Data.Graph.ShortestPath as P
+import Data.Graph.ShortestPath2
+import qualified Data.Graph.ShortestPath2 as P
 
 type DAG a = DAWGArray (Maybe a)
 
 type NodeID  = Int
 data Node = N {-# UNPACK #-} !NodeID {-# UNPACK #-} !Pos
-    deriving (Eq, Ord)
+    deriving (Show, Eq, Ord)
 
 {-# INLINE nodeId #-}
 nodeId :: Node -> NodeID
@@ -28,12 +28,13 @@ search cost th x dag =
   where
     -- nub = map head . group
     edgesFrom (N n i) =
-        down ++ right ++ skew
+        skew ++ down ++ right
       where
         j = i+1
         down
             | j > wordLength x = []
-            | otherwise = [(N n j, (delete cost) (j, x#j) undefined)]
+            | otherwise =
+	    	[(N n j, (delete cost) (j, x#j) undefined)]
         right = 
             [ (N m i, (insert cost) j (undefined, c))
             | (c, m) <- edges dag n ]
@@ -41,6 +42,8 @@ search cost th x dag =
             | j > wordLength x = []
             | otherwise =
                 [ (N m j, (subst cost)  (j, x#j) (undefined, c))
-                | (c, m) <- edges dag n ]
+                | (c, m) <- edges dag n, x#j == c ] ++
+                [ (N m j, (subst cost)  (j, x#j) (undefined, c))
+                | (c, m) <- edges dag n, x#j /= c ]
     isEnd (N n k) = k == wordLength x
                  && isJust (valueIn $ row dag n)
