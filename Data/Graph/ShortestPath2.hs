@@ -8,7 +8,8 @@ module Data.Graph.ShortestPath2
 import Control.Monad (when)
 import Data.Function (on)
 import Data.List (foldl')
-import Data.PQueue.Min hiding (filter)
+import Data.PQueue.Min hiding (takeWhile)
+import qualified Data.Set as S
 
 -- | Adjacent list for a given node @n. We assume, that it
 -- is given in an ascending order.
@@ -40,16 +41,23 @@ minPath :: (Ord n, Ord w, Num w) => w
         -> Edges n w -> IsEnd n -> n
         -> Maybe (n, w)
 minPath threshold edgesFrom isEnd n =
-    shortest $ singleton (Adj [(n, 0)])
+    shortest S.empty $ singleton (Adj [(n, 0)])
   where
-    -- | FIXME: Add visited set !!!
-    shortest q = do
+    -- | @v -- set of visited nodes.
+    --   @q -- priority queue,
+    shortest v q = do
         (adj, q') <- minView q
-        let (n, w) = proxy adj
-        if isEnd n
-            then Just (n, w)
-            else shortest $ push (push q' $ folls adj) $
-                    filter ((<= threshold) . snd)
+        process q' adj
+      where
+        process q adj
+            | isEnd n        = Just (n, w)
+            | n `S.member` v = shortest v q
+            | otherwise      = shortest v' q'
+          where
+            (n, w) = proxy adj
+            v' = S.insert n v
+            q' = push (push q $ folls adj) $
+                    takeWhile ((<= threshold) . snd)
                     [(m, w + v) | (m, v) <- edgesFrom n]
-    push q [] = q
-    push q xs = insert (Adj xs) q
+            push q [] = q
+            push q xs = insert (Adj xs) q
