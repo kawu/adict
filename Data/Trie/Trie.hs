@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE BangPatterns #-}
 
-module Data.Trie
+module Data.Trie.Trie
 ( Trie (..)
 ) where
 

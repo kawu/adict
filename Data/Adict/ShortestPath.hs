@@ -1,4 +1,4 @@
-module Data.DAWG.Adict
+module Data.Adict.ShortestPath
 ( search
 ) where
 
@@ -7,9 +7,7 @@ import Data.List (group)
 
 import Data.Adict.Base
 import Data.DAWG.Array
--- import Data.Graph.ShortestPath hiding (path)
-import Data.Graph.ShortestPath2
-import qualified Data.Graph.ShortestPath2 as P
+import Data.Graph.ShortestPath
 
 type DAG a = DAWGArray (Maybe a)
 
@@ -22,9 +20,9 @@ nodeId :: Node -> NodeID
 nodeId (N x _) = x
 
 -- search :: Cost Char -> Double -> Word -> DAG a -> Maybe (String, a)
-search cost th x dag =
+search cost z x dag =
     -- entry dag . nub . reverse . map nodeId . P.path =<<
-    minPath th edgesFrom isEnd (N (root dag) 0)
+    minPath z edgesFrom isEnd (N (root dag) 0)
   where
     -- nub = map head . group
     edgesFrom (N n i) =
@@ -34,16 +32,16 @@ search cost th x dag =
         down
             | j > wordLength x = []
             | otherwise =
-	    	[(N n j, (delete cost) (j, x#j) undefined)]
+	    	[(N n j, (delete cost) j (x#j))]
         right = 
-            [ (N m i, (insert cost) j (undefined, c))
+            [ (N m i, (insert cost) j c)
             | (c, m) <- edges dag n ]
         skew
             | j > wordLength x = []
             | otherwise =
-                [ (N m j, (subst cost)  (j, x#j) (undefined, c))
+                [ (N m j, (subst cost)  j (x#j) c)
                 | (c, m) <- edges dag n, x#j == c ] ++
-                [ (N m j, (subst cost)  (j, x#j) (undefined, c))
+                [ (N m j, (subst cost)  j (x#j) c)
                 | (c, m) <- edges dag n, x#j /= c ]
     isEnd (N n k) = k == wordLength x
                  && isJust (valueIn $ row dag n)

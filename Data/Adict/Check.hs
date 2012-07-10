@@ -20,8 +20,7 @@ import Test.QuickCheck
 import qualified Data.Adict.Brute as B
 import qualified Data.Adict.Slow as S
 import qualified Data.Adict.Fast as F
-import qualified Data.Adict.Graph as G
-import qualified Data.Trie as T
+import qualified Data.Trie.Trie as T
 import qualified Data.Trie.Class as C
 import Data.Adict.Base
 
@@ -31,27 +30,24 @@ valRange  = (0, 10)	-- ^ Weight of edit op
 descRange = (0, 25)	-- ^ Number of random edit ops of given type
 langRange = (0, 25)	-- ^ Size of language
 
--- | Simple type synonym for (Pos, a).
-type P a = (Pos, a)
-
 type Val = Double
 
 -- | Helper structure with Arbitrary instance (implementation below),
 -- which can be transformed to an Adict Cost function.
-data CostDesc a = CostDesc
-    { insD :: M.Map (Pos, P a) Val
-    , delD :: M.Map (P a, Pos) Val
-    , subD :: M.Map (P a, P a) Val }
+data CostDesc = CostDesc
+    { insD :: M.Map (Pos, Char) Val
+    , delD :: M.Map (Pos, Char) Val
+    , subD :: M.Map (Pos, Char, Char) Val }
     deriving Show
 
 -- | Construct Cost function from a description structure.
-fromDesc :: Ord a => CostDesc a -> Cost a
+fromDesc :: CostDesc -> Cost
 fromDesc CostDesc{..} = Cost ins del sub
   where
-    ins i y = fromJust $ (i, y) `M.lookup` insD <|> return 1
-    del x j = fromJust $ (x, j) `M.lookup` delD <|> return 1
-    sub x y = fromJust $ (x, y) `M.lookup` subD  <|> return (sub' x y)
-    sub' (_, x) (_, y)
+    ins i x = fromJust $ (i, x) `M.lookup` insD <|> return 1
+    del i x = fromJust $ (i, x) `M.lookup` delD <|> return 1
+    sub i x y = fromJust $ (i, x, y) `M.lookup` subD  <|> return (sub' x y)
+    sub' x y
         | x == y    = 0
         | otherwise = 1
 
@@ -61,19 +57,16 @@ arbitraryPos = choose posRange
 arbitraryVal :: Gen Val
 arbitraryVal = choose valRange
 
-arbitraryP :: Arbitrary a => Gen (P a)
-arbitraryP = (,) <$> arbitraryPos <*> arbitrary
-
-instance (Ord a, Arbitrary a) => Arbitrary (CostDesc a) where
+instance Arbitrary CostDesc where
     arbitrary = do
         ins <- M.fromList <$> listOf insElem 
         del <- M.fromList <$> listOf delElem
         sub <- M.fromList <$> listOf subElem
         return $ CostDesc ins del sub
       where 
-	insElem  = (,) <$> arbitraryPos <*> arbitraryP
-	delElem  = (,) <$> arbitraryP   <*> arbitraryPos
-	subElem  = (,) <$> arbitraryP   <*> arbitraryP
+	insElem  = (,)  <$> arbitraryPos <*> arbitrary
+	delElem  = (,)  <$> arbitraryPos <*> arbitrary
+	subElem  = (,,) <$> arbitraryPos <*> arbitrary <*> arbitrary
         listOf m = do
             k  <- choose descRange
             vectorOf k ((,) <$> m <*> arbitraryVal)
@@ -90,12 +83,11 @@ instance Arbitrary Lang where
 
 -- | QuickCheck property: set of matching dictionary entries should
 -- be the same no matter which searching function is used.
-propConsistency :: CostDesc Char -> Positive Val -> String -> Lang -> Bool
+propConsistency :: CostDesc -> Positive Val -> String -> Lang -> Bool
 propConsistency costDesc kP xR lang = eq
     [ nub (B.search cost k x ys)
     , nub (S.search cost k x trie)
-    , nub (evalAdict cost k x (F.search trie))
-    , nub (evalAdict cost k x (G.search thresConst trie)) ]
+    , nub (F.search cost k x trie) ]
   where
     x = fromString xR
     eq xs = and [x == x' | (x, x') <- zip xs (tail xs)] 

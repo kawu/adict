@@ -1,7 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Data.DAWG
+module Data.DAWG.Trie
 ( DAWG (..)
 , mkDAWG
 , serialize
@@ -15,11 +15,9 @@ import Data.Binary (Binary, get, put)
 import qualified Data.Map as M
 
 import qualified Data.Trie.Class as C
-import Data.Trie
+import Data.Trie.Trie
 import Data.DAWG.Node
 
--- | FIXME: For DAWG there should be another Trie-like class
--- without operations which modify Trie structure (like mkTrie).
 newtype DAWG a = DAWG { unDAWG :: Trie a }
     deriving (Eq, Ord, C.Trie)
 

@@ -1,57 +1,63 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Data.Graph.ShortestPath
 ( minPath
--- , Path (..)
 ) where
 
 import Control.Monad (when)
 import Data.Function (on)
 import Data.List (foldl')
-import Data.PSQueue
+import Data.PQueue.Min hiding (takeWhile)
+import qualified Data.Set as S
 
-import Debug.Trace (trace)
-
--- | List of edges for a given node @n.
+-- | Adjacent list for a given node @n. We assume, that it
+-- is given in an ascending order.
 type Edges n w = n -> [(n, w)]
 
 -- | Is @n node an ending node?
 type IsEnd n = n -> Bool
 
--- data Path n w = Path
---     { path   :: [n]
---     , weight :: w }
---     deriving Show
--- 
--- instance Eq w => Eq (Path n w) where
---     (==) = (==) `on` weight
--- 
--- instance Ord w => Ord (Path n w) where
---     compare = compare `on` weight
+-- | Non-empty list of adjacent nodes given in ascending order.
+-- We use newtype to implement custom Eq and Ord instances.
+newtype Adj n w = Adj { unAdj :: [(n, w)] }
 
--- {-# INLINE (.+.) #-}
--- (.+.) :: Num w => Path n w -> (n, w) -> Path n w
--- Path xs w .+. (x, v) = Path (x:xs) (w+v)
+{-# INLINE proxy #-}
+proxy :: Adj n w -> (n, w)
+proxy = head . unAdj
+
+{-# INLINE folls #-}
+folls :: Adj n w -> [(n, w)]
+folls = tail . unAdj
+
+instance Eq w => Eq (Adj n w) where
+    (==) = (==) `on` snd . proxy
+
+instance Ord w => Ord (Adj n w) where
+    compare = compare `on` snd . proxy
 
 -- | Find shortes path from a beginning node to any ending node.
--- minPath :: (Ord n, Ord w, Num w) => w
---         -> Edges n w -> IsEnd n -> n
---         -> Maybe (Path n w)
+minPath :: (Ord n, Ord w, Num w) => w
+        -> Edges n w -> IsEnd n -> n
+        -> Maybe (n, w)
 minPath threshold edgesFrom isEnd n =
-    shortest $ singleton n 0 -- (Path [] 0)
+    shortest S.empty $ singleton (Adj [(n, 0)])
   where
-    shortest q = do
-        (n :-> w, q') <- trace ("q: " ++ show (size q)) (minView q)
-        -- when (weight w > threshold)
-        when (w > threshold)
-             (error "minPath: weight > threshold")
-        if isEnd n
-            then Just w
-            else shortest $ foldl' push q'
-                    -- [ (m, w .+. (m, v))
-                    [ (m, w + v)
-                    | (m, v) <- edgesFrom n ] 
-    push q (n, w)
-        -- | weight w > threshold = q
-        | w > threshold = q
-        | otherwise = insertWith min n w q
+    -- | @v -- set of visited nodes.
+    --   @q -- priority queue,
+    shortest v q = do
+        (adj, q') <- minView q
+        process q' adj
+      where
+        process q adj
+            | isEnd n        = Just (n, w)
+            | n `S.member` v = shortest v q
+            | otherwise      = shortest v' q'
+          where
+            (n, w) = proxy adj
+            v' = S.insert n v
+            q' = push (push q $ folls adj) $
+                    takeWhile ((<= threshold) . snd)
+                    [(m, w + v) | (m, v) <- edgesFrom n]
+            push q [] = q
+            push q xs = insert (Adj xs) q

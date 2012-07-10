@@ -9,7 +9,7 @@ import Data.Adict.Dist
 
 -- | Find all words within a list with restricted generalized edit distance
 -- from x lower or equall to k.
-search :: Cost Char -> Double -> Word -> [(Word, a)] -> [(Entry a, Double)]
+search :: Cost -> Double -> Word -> [(Word, a)] -> [(Entry a, Double)]
 search cost k x set =
     catMaybes $ map check set
   where

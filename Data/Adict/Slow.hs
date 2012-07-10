@@ -10,7 +10,7 @@ import Data.Trie.Class hiding (insert)
 
 -- | Find all words within a trie with restricted generalized edit distance
 -- lower or equall to k.
-search :: Trie t => Cost Char -> Double -> Word
+search :: Trie t => Cost -> Double -> Word
        -> t (Maybe a) -> [(Entry a, Double)]
 search cost k x trie =
     foundHere ++ foundLower
@@ -23,7 +23,7 @@ search cost k x trie =
     foundLower
         | minimum (A.elems distV) > k = []
         | otherwise = concatMap searchLower $ anyChild trie
-    searchLower = search' cost k 1 dist' x
+    searchLower = search' cost k dist' x
 
     dist' = (A.!) distV 
     distV = A.array bounds [(i, dist i) | i <- range bounds]
@@ -31,11 +31,11 @@ search cost k x trie =
     m = wordLength x
 
     dist 0 = 0
-    dist i = dist' (i-1) + (delete cost) (i, x#i) 0
+    dist i = dist' (i-1) + (delete cost) i (x#i)
 
-search' :: Trie t => Cost Char -> Double -> Int -> (Int -> Double)
+search' :: Trie t => Cost -> Double -> (Int -> Double)
         -> Word -> (Char, t (Maybe a)) -> [(Entry a, Double)]
-search' cost k j distP x (c, trie) =
+search' cost k distP x (c, trie) =
     foundHere ++ map (appendChar c) foundLower
   where
     foundHere
@@ -46,7 +46,7 @@ search' cost k j distP x (c, trie) =
     foundLower
         | minimum (A.elems distV) > k = []
         | otherwise = concatMap searchLower $ anyChild trie
-    searchLower = search' cost k (j+1) dist' x
+    searchLower = search' cost k dist' x
     appendChar c (Entry cs x, v) = (Entry (c:cs) x, v)
 
     dist' = (A.!) distV 
@@ -54,8 +54,8 @@ search' cost k j distP x (c, trie) =
     bounds  = (0, m)
     m = wordLength x
 
-    dist 0 = distP 0  + (insert cost)  0       (j, c)
+    dist 0 = distP 0  + (insert cost) 0       c
     dist i = minimum
-        [ distP (i-1) + (subst cost)  (i, x#i) (j, c)
-        , dist' (i-1) + (delete cost) (i, x#i)  j
-        , distP i     + (insert cost)  i       (j, c) ]
+        [ distP (i-1) + (subst cost)  i (x#i) c
+        , dist' (i-1) + (delete cost) i (x#i) 
+        , distP i     + (insert cost) i       c ]
