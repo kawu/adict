@@ -2,14 +2,12 @@ module Data.Adict.ShortestPath
 ( search
 ) where
 
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, maybeToList)
 import Data.List (group)
 
 import Data.Adict.Base
-import Data.DAWG.Array
+import Data.DAWG.Class
 import Data.Graph.ShortestPath
-
-type DAG a = DAWGArray (Maybe a)
 
 type NodeID  = Int
 data Node = N {-# UNPACK #-} !NodeID {-# UNPACK #-} !Pos
@@ -19,7 +17,9 @@ data Node = N {-# UNPACK #-} !NodeID {-# UNPACK #-} !Pos
 nodeId :: Node -> NodeID
 nodeId (N x _) = x
 
--- search :: Cost Char -> Double -> Word -> DAG a -> Maybe (String, a)
+type Dag d a = d (Maybe a)
+
+search :: DAWG d => Cost -> Double -> Word -> Dag d a -> Maybe (Node, Double)
 search cost z x dag =
     -- entry dag . nub . reverse . map nodeId . P.path =<<
     minPath z edgesFrom isEnd (N (root dag) 0)
@@ -39,9 +39,10 @@ search cost z x dag =
         skew
             | j > wordLength x = []
             | otherwise =
-                [ (N m j, (subst cost)  j (x#j) c)
-                | (c, m) <- edges dag n, x#j == c ] ++
+                [ (N m j, 0)
+                | m <- maybeToList $ edgeOn dag n (x#j) ]
+                ++
                 [ (N m j, (subst cost)  j (x#j) c)
                 | (c, m) <- edges dag n, x#j /= c ]
     isEnd (N n k) = k == wordLength x
-                 && isJust (valueIn $ row dag n)
+                 && isJust (valueIn dag n)

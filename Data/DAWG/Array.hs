@@ -17,7 +17,8 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import Data.Binary (Binary, get, put)
 
-import qualified Data.Trie.Class as C
+import qualified Data.Trie.Class as T
+import qualified Data.DAWG.Class as D
 import qualified Data.DAWG.Node as N
 
 data DAWGArray a = DAWGArray
@@ -37,7 +38,7 @@ data DAWGRow a  = DAWGRow
 entry :: DAWGArray (Maybe a) -> [Int] -> Maybe (String, a)
 entry dag xs = do
     x <- mapM (charOn dag) (zip (root dag:xs) xs)
-    r <- C.lookup x dag
+    r <- T.lookup x dag
     return (x, r)
 
 charOn :: DAWGArray a -> (Int, Int) -> Maybe Char
@@ -70,7 +71,15 @@ edges :: DAWGArray a -> Int -> [(Char, Int)]
 edges dag k =
     U.toList $ edgeVec (row dag k)
 
-instance C.Trie DAWGArray where
+instance D.DAWG DAWGArray where
+    root    DAWGArray{..}   = root
+    valueIn DAWGArray{..} k = valueIn (array V.! k)
+    edges   DAWGArray{..} k = U.toList $ edgeVec $ array V.! k
+    edgeOn dag@DAWGArray{..} k x =
+        let row = array V.! k
+        in  snd <$> U.find ((x==).fst) (edgeVec row)
+
+instance T.Trie DAWGArray where
     unTrie dag@DAWGArray{..} =
         let row = array V.! root
         in  ( valueIn row
