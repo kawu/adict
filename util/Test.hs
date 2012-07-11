@@ -6,8 +6,9 @@ import Data.List (intercalate)
 import qualified Data.Vector.Unboxed as U
 
 import Data.DAWG.Array
-import Data.DAWG.Adict (search)
-import Data.Adict.Base (costDefault)
+-- import Data.Adict.Base (costDefault)
+import Data.Adict.CostOrd (costEx)
+import Data.Adict.ShortestPath (search)
 
 type Dict = DAWGArray (Maybe ())
 
@@ -17,7 +18,8 @@ onInput dict = unlines . map (onLine dict) . lines
 onLine  :: Dict -> String -> String
 onLine dict line =
     let [x, k] = words line
-        y = search costDefault (read k) (U.fromList x) dict
+        cost = costEx $ length x
+        y = search cost (read k) (U.fromList x) dict
     in  show y
 
 -- onLine  :: Dict -> String -> String
@@ -32,10 +34,10 @@ main = do
     [inPath] <- getArgs
     dict <- decodeFile inPath :: IO Dict
     putStrLn $ "size: " ++ show (size dict)
-    -- interact (onInput dict)
+--     interact (onInput dict)
     beg <- getCPUTime
     mapM_ (putStrLn . onInput dict)
-	  (replicate 10000 "kuternoga 1")
+	  (replicate 10000 "kuternga 2")
     end <- getCPUTime
     let diff = (fromIntegral (end - beg)) / (10^12)
     printf "Computation time: %0.3f sec\n" (diff :: Double)

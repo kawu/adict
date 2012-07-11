@@ -8,7 +8,6 @@ module Data.DAWG.Array
 , size
 , row
 , edges
-, entry
 ) where
 
 import Control.Applicative ((<$>))
@@ -35,15 +34,15 @@ data DAWGRow a  = DAWGRow
     { valueIn :: a
     , edgeVec :: U.Vector (Char, Int) }
 
-entry :: DAWGArray (Maybe a) -> [Int] -> Maybe (String, a)
-entry dag xs = do
-    x <- mapM (charOn dag) (zip (root dag:xs) xs)
-    r <- T.lookup x dag
-    return (x, r)
-
-charOn :: DAWGArray a -> (Int, Int) -> Maybe Char
-charOn dag (root, x) = listToMaybe
-    [c | (c, y) <- edges dag root, x == y]
+-- entry :: DAWGArray (Maybe a) -> [Int] -> Maybe (String, a)
+-- entry dag xs = do
+--     x <- mapM (charOn dag) (zip (root dag:xs) xs)
+--     r <- T.lookup x dag
+--     return (x, r)
+-- 
+-- charOn :: DAWGArray a -> (Int, Int) -> Maybe Char
+-- charOn dag (root, x) = listToMaybe
+--     [c | (c, y) <- edges dag root, x == y]
 
 serialize :: Ord a => DAWGArray a -> [N.Node a]
 serialize = map unRow . V.toList . array
