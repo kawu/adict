@@ -39,7 +39,7 @@ instance Ord w => Ord (Adj n w) where
     compare = compare `on` snd . proxy
 
 -- | Find shortes path from a beginning node to any ending node.
-minPath :: (Show n, Ord n, Ord w, Num w) => w
+minPath :: (Ord n, Ord w, Num w) => w
         -> Edges n w -> IsEnd n -> n
         -> Maybe ([n], w)
 minPath threshold edgesFrom isEnd n =
@@ -55,7 +55,7 @@ minPath threshold edgesFrom isEnd n =
         process q' adj
       where
         process q adj
-            | isEnd n        = Just (trace v' n, w)
+            | isEnd n        = Just (reverse (trace v' n), w)
             | n `M.member` v = shortest v q
             | otherwise      = shortest v' q'
           where
