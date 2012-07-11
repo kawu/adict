@@ -23,10 +23,12 @@ Exposed-modules:    Data.Trie.Trie
 		    Data.Adict.Fast
 		    Data.Adict.ShortestPath
 		    Data.Adict.Check
+		    Data.Map.Combine
 Build-Depends:      base
                   , containers
 		  , vector
 		  , array
+		  , text
 		  , binary
 		  , vector-binary
 		  , QuickCheck
