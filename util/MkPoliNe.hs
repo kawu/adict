@@ -52,17 +52,33 @@ parsePoliRow row =
 parseWikiFull :: String -> [(NE, Type)]
 parseWikiFull = concatMap parseWikiRow . lines
 
+-- parseWikiRow :: String -> [(NE, Type)]
+-- parseWikiRow row =
+--     let xs = groupBy' 4 $ split (=='\t') row
+--         (body, desc) = (init xs, last xs)
+--         label = desc !! 2
+--         parseLang body =
+--             let x = T.pack (body !! 0)
+--                 y = T.pack (body !! 1 ++ label)
+--             in  x `seq` y `seq` (x, y)
+--     in  map parseLang body
+--   where
+--     groupBy' k [] = []
+--     groupBy' k xs = take k xs : groupBy' k (drop k xs)
+
 parseWikiRow :: String -> [(NE, Type)]
 parseWikiRow row =
-    let xs = groupBy' 4 $ split (=='\t') row
-        (body, desc) = (init xs, last xs)
+    let xs = split (=='\t') row
+        body = head $ groupBy' 4 $ xs
+        desc = lastk 4 xs
         label = desc !! 2
         parseLang body =
             let x = T.pack (body !! 0)
                 y = T.pack (body !! 1 ++ label)
             in  x `seq` y `seq` (x, y)
-    in  map parseLang body
+    in  [parseLang body]
   where
+    lastk k xs = drop (length xs - k) xs
     groupBy' k [] = []
     groupBy' k xs = take k xs : groupBy' k (drop k xs)
 
