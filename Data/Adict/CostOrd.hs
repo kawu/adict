@@ -3,7 +3,7 @@ module Data.Adict.CostOrd
 , CostOrd (..)
 , Weight
 , groupWeight
-, costEx
+, costDefault
 ) where
 
 import Control.Applicative ((<$>), (<*>))
@@ -33,28 +33,16 @@ data CostOrd = CostOrd
     , substOrd  :: Char -> [Group]
     , posMod    :: Pos  -> Double }
 
-costEx :: Int -> CostOrd
-costEx n =
-
+costDefault :: CostOrd
+costDefault =
     CostOrd insert delete subst posMod
-
   where
-
-    insert = [Filter (const True) 1]
-
-    delete x
-        | C.isPunctuation x = 0.5
-        | otherwise         = 1
-
-    subst x =
+    insert   = [Filter (const True) 1]
+    delete _ = 1
+    subst x  =
         [ Filter eq 0
         , Filter ot 1 ]
       where
         eq = (x==)
         ot = not.eq
-
-    posMod k
-        | k <= n_2  = 1
-        | otherwise = (n - k + 1) ./. (n - n_2 + 1)
-    x ./. y = fromIntegral x / fromIntegral y
-    n_2 = (n + 1) `div` 2
+    posMod = const 1
