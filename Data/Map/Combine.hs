@@ -2,6 +2,7 @@
 
 module Data.Map.Combine
 ( combine
+, RelCode (..)
 , poliWith
 ) where
 
@@ -60,10 +61,23 @@ type Form  = T.Text
 type Lemma = T.Text
 type PoliMorf = M.Map Form Lemma
 
-poliWith :: PoliMorf -> M.Map Form a -> M.Map Form (Maybe a)
+-- | Reliability information: how did we assign a particular label to
+-- a particular word form.
+data RelCode a
+    = Exact a
+    | ByLemma a -- ^ Label assigned based on lemma label  
+    deriving (Show, Eq, Ord)
+
+-- instance Show a => Show (RelCode a) where
+--     show (Exact x)   = '1' : show x
+--     show (ByLemma x) = '2' : show x
+
+poliWith :: PoliMorf -> M.Map Form a -> M.Map Form (Maybe (RelCode a))
 poliWith poli labeled =
     combine poli labeled f
   where
-    f x | Just y <- M.lookup x labeled = Just y
-        | Just y <- M.lookup x poli >>= flip M.lookup labeled = Just y
+    f x | Just y <- M.lookup x labeled
+            = Just (Exact y)
+        | Just y <- M.lookup x poli >>= flip M.lookup labeled
+            = Just (ByLemma y)
         | otherwise = Nothing

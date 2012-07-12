@@ -19,7 +19,7 @@ import Text.XML.PolySoup hiding (join)
 
 import Data.Trie.Trie (Trie)
 import Data.Trie.Class (fromList)
-import Data.Map.Combine (poliWith)
+import Data.Map.Combine (poliWith, RelCode(..))
 import qualified Data.DAWG.Trie as D
 
 instance Binary T.Text where
@@ -30,6 +30,10 @@ instance Binary T.Text where
 
 type Form  = T.Text
 type Lemma = T.Text
+
+type NE    = T.Text
+type Type  = T.Text
+type Label = T.Text
 
 -- | Get a list of pairs (form, lemma) from a PoliMorf string.
 parsePoliMorf :: String -> [(Form, Lemma)]
@@ -43,11 +47,32 @@ parsePoliRow row =
         y  = T.pack (snd xs)
     in  x `seq` y `seq` (x, y)
 
------ LMF parser -----
+----- Prolexbase (wikipedia.full.txt) parser -----
 
-type NE    = T.Text
-type Type  = T.Text
-type Label = T.Text
+parseWikiFull :: String -> [(NE, Type)]
+parseWikiFull = concatMap parseWikiRow . lines
+
+parseWikiRow :: String -> [(NE, Type)]
+parseWikiRow row =
+    let xs = groupBy' 4 $ split (=='\t') row
+        (body, desc) = (init xs, last xs)
+        label = desc !! 2
+        parseLang body =
+            let x = T.pack (body !! 0)
+                y = T.pack (body !! 1 ++ label)
+            in  x `seq` y `seq` (x, y)
+    in  map parseLang body
+  where
+    groupBy' k [] = []
+    groupBy' k xs = take k xs : groupBy' k (drop k xs)
+
+split :: (Char -> Bool) -> String -> [String]
+split p s = case dropWhile p s of
+    "" -> []
+    s' -> let (w, s'') = break p s'
+          in w : split p s''
+
+----- LMF parser -----
 
 lmfP :: XmlParser String [(NE, Type)]
 lmfP = true ##> lexEntryP
@@ -93,10 +118,17 @@ fromListWith f xs =
 ----- Main program -----
 
 main = do
-    [poliPath, nePath, outPath] <- getArgs
+    [poliPath, lmfPath, wikiPath, outPath] <- getArgs
     poli <- M.fromList . parsePoliMorf <$> readFile poliPath
-    ne   <- mkLabelMap . parseXML lmfP <$> readFile nePath
-    let poliNe = join . maybeToList <$> poliWith poli ne
+    lmf  <- mkLabelMap . parseXML lmfP <$> readFile lmfPath
+    wiki <- mkLabelMap . parseWikiFull <$> readFile wikiPath
+    let ne = M.unionWith (++) lmf wiki
+    let poliNe = join . maybeToList
+             <$> fmap unRel
+             <$> poliWith poli ne
     let xs = [(T.unpack x, y) | (x, y) <- M.toList poliNe]
     let dawg = D.mkDAWG (fromList xs :: Trie (Maybe [Label]))
     encodeFile outPath dawg
+  where
+    unRel (Exact xs) = map ('1' `T.cons`) xs
+    unRel (ByLemma xs) = map ('2' `T.cons`) xs
