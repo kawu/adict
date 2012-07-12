@@ -146,5 +146,4 @@ main = do
     let dawg = D.mkDAWG (fromList xs :: Trie (Maybe [Label]))
     encodeFile outPath dawg
   where
-    unRel (Exact xs) = map ('1' `T.cons`) xs
-    unRel (ByLemma xs) = map ('2' `T.cons`) xs
+    unRel (xs, code) = map (T.pack (show code) `T.append`) xs
