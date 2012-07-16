@@ -5,6 +5,7 @@ module Data.Map.Combine
 ( combine
 , RelCode (..)
 , poliWith
+, poliHist
 ) where
 
 import qualified Data.Map as M
@@ -13,6 +14,8 @@ import qualified Data.Text as T
 
 import Data.List (foldl')
 import Data.Maybe (maybeToList)
+
+import Data.Binary (Binary, get, put)
 
 combine :: Ord a => M.Map a b -> M.Map a c -> (a -> d) -> M.Map a d
 combine m n f =
@@ -36,6 +39,16 @@ instance Show RelCode where
     show ByLemma = "2"
     show ByForm  = "3"
 
+instance Binary RelCode where
+    put Exact   = put '1'
+    put ByLemma = put '2'
+    put ByForm  = put '3'
+    get = get >>= \x -> return $ case x of
+        '1' -> Exact
+        '2' -> ByLemma
+        '3' -> ByForm
+
+-- | FIXME: Generalize poliWith and poliHist functions.
 poliWith :: Ord a => PoliMorf -> M.Map Form [a]
          -> M.Map Form (Maybe ([a], RelCode))
 poliWith poli labeled =
@@ -57,3 +70,20 @@ fromListWith :: Ord k => (a -> a -> a) -> [(k, a)] -> M.Map k a
 fromListWith f xs =
     let update m (!k, !x) = M.insertWith' f k x m
     in  foldl' update M.empty xs
+
+poliHist :: Ord a => PoliMorf -> M.Map Lemma a
+         -> M.Map Form (Maybe (a, RelCode))
+poliHist poli labeled =
+    combine poli labeled f
+  where
+    f x | Just y <- M.lookup x labeled
+            = Just (y, Exact)
+        | Just y <- M.lookup x poli >>= flip M.lookup labeled
+            = Just (y, ByLemma)
+        | Just y <- M.lookup x poli >>= flip M.lookup labeled'
+            = Just (y, ByForm)
+        | otherwise = Nothing
+    labeled' = M.fromList
+        [ (lemma, y)
+        | (form, lemma) <- M.assocs poli
+        , y <- maybeToList (form `M.lookup` labeled) ]
