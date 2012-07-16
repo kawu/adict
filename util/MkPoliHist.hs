@@ -58,7 +58,9 @@ lexEntryP = (tag "LexicalEntry" *> getAttr "id") `join` \lexId -> do
     return (lemma, T.pack lexId)
 
 lemmaP :: XmlParser String Lemma
-lemmaP = T.pack . head <$> (tag "Lemma" //> featP "writtenForm")
+lemmaP = getIt <$> (tag "Lemma" //> featP "writtenForm")
+  where  getIt []     = ""  -- ^ Abnormal, lemma should be always present!
+         getIt (x:xs) = T.pack x
 
 -- wordP :: XmlParser String String
 -- wordP = head <$> (tag "Lemma" <|> tag "WordForm" //> featP "writtenForm")
