@@ -15,68 +15,31 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Text.Encoding as T
 
-import Text.XML.PolySoup
+import qualified Data.PoliMorf as Poli
+import qualified Text.PoliMorf as Poli
+import qualified Text.LMF.Hist as Hist
 
 import Data.Trie.Trie (Trie)
 import Data.Trie.Class (fromList)
-import Data.Map.Combine (poliHist, RelCode(..))
 import qualified Data.DAWG.Trie as D
 
 instance Binary T.Text where
     put = put . T.encodeUtf8
     get = T.decodeUtf8 <$> get 
 
------ PoliMorf parser -----
-
-type Form  = T.Text
-type Lemma = T.Text
-
--- | Get a list of pairs (form, lemma) from a PoliMorf string.
-parsePoliMorf :: String -> [(Form, Lemma)]
-parsePoliMorf = map parsePoliRow . lines 
-
--- | Get a (form, lemma) pair from a PoliMorf row.
-parsePoliRow :: String -> (Form, Lemma)
-parsePoliRow row =
-    let xs = break (=='\t') row
-        x  = T.pack (fst xs)
-        y  = T.pack (snd xs)
-    in  x `seq` y `seq` (x, y)
-
------ LMF parser -----
-
-type ID = T.Text
-
-lmfP :: XmlParser String [(Lemma, ID)]
-lmfP = true //> lexEntryP
-
-lexEntryP :: XmlParser String (Lemma, ID)
-lexEntryP = (tag "LexicalEntry" *> getAttr "id") `join` \lexId -> do
-    many_ $ cut $ tag "feat"
-    -- xs <- many wordP
-    lemma <- lemmaP <* ignore
-    return (lemma, T.pack lexId)
-
-lemmaP :: XmlParser String Lemma
-lemmaP = getIt <$> (tag "Lemma" //> featP "writtenForm")
-  where  getIt []     = ""  -- ^ Abnormal, lemma should be always present!
-         getIt (x:xs) = T.pack x
-
--- wordP :: XmlParser String String
--- wordP = head <$> (tag "Lemma" <|> tag "WordForm" //> featP "writtenForm")
-
-featP :: String -> XmlParser String String
-featP att = cut (tag "feat" *> hasAttr "att" att *> getAttr "val")
-
------ Main program -----
-
-type IdTrie = Trie (Maybe (Maybe (ID, RelCode)))
+type ID     = T.Text
+type IdTrie = Trie (Maybe (Maybe (ID, Poli.RelCode)))
 
 main = do
-    [poliPath, lmfPath, outPath] <- getArgs
-    poli <- M.fromList . parsePoliMorf <$> readFile poliPath
-    lmf  <- M.fromList . parseXML lmfP <$> readFile lmfPath
-    let poliNe = poliHist poli lmf
-    let xs = [(T.unpack x, y) | (x, y) <- M.toList poliNe]
+    [poliPath, histPath, outPath] <- getArgs
+
+    poliEs <- Poli.parsePoliMorf <$> readFile poliPath
+    let poli = M.fromList [(Poli.form x, Poli.base x) | x <- poliEs]
+
+    histEs  <- Hist.parseHist <$> readFile histPath
+    let hist = M.fromList [(Hist.base x, Hist.lxId x) | x <- histEs]
+
+    let poliHist = poli `Poli.joinHist` hist
+    let xs = [(T.unpack x, y) | (x, y) <- M.toList poliHist]
     let dawg = D.mkDAWG (fromList xs :: IdTrie)
     encodeFile outPath dawg
