@@ -16,11 +16,6 @@ module Data.Adict.Base
 
 import Control.Applicative ((<$>), (<*>))
 import qualified Data.Vector.Unboxed as U
-import Control.Monad.Trans (lift)
-import Control.Monad.RWS (runRWS, RWS)
-import Control.Monad.State.Class (get, put, modify)
-import Control.Monad.Reader.Class (ask)
-import Control.Monad.Writer.Class (tell)
 
 -- | Word type.
 type Word = U.Vector Char
