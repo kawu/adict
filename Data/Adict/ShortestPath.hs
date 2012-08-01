@@ -53,32 +53,29 @@ search cost z x dag = do
     return (form, r, w)
   where
     edgesFrom (Node n i _) =
-        concatMap follow $ sortBy (comparing weight) $ groups
+        concatMap follow $ sortBy (comparing weight) groups
       where
         j = i+1
 
         groups = insGroups ++ delGroups ++ subGroups
-        insGroups = Ins <$> insertOrd cost
-        delGroups = Del <$> do
+        insGroups = Ins . mapWeight (*posMod cost i) <$>
+            insertOrd cost
+        delGroups = Del . (*posMod cost j) <$> do
             guard (j <= wordLength x)
             return $ deleteOrd cost (x#j)
-        subGroups = Sub <$> do
+        subGroups = Sub . mapWeight (*posMod cost j) <$> do
             guard (j <= wordLength x)
             substOrd cost (x#j)
 
         follow (Ins (Filter f w)) =
-            [ ( Node m i (Just c)
-              , w * posMod cost i )
+            [ (Node m i (Just c), w)
             | (c, m) <- edges dag n
             , f c ]
 
-        follow (Del w) =
-            [ ( Node n j Nothing
-              , w * posMod cost j) ]
+        follow (Del w) = [(Node n j Nothing, w)]
 
         follow (Sub (Filter f w)) =
-            [ ( Node m j (Just c)
-              , w * posMod cost j )
+            [ (Node m j (Just c), w)
             | (c, m) <- edges dag n
             , f c ]
 

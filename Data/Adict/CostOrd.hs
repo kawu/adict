@@ -3,6 +3,7 @@ module Data.Adict.CostOrd
 , CostOrd (..)
 , Weight
 , groupWeight
+, mapWeight
 , costDefault
 
 , SubDsc (..)
@@ -27,13 +28,16 @@ type NodeId = Int
 -- | Weight of edit operation
 type Weight = Double
 
--- | TODO
+-- | TODO: Add Choice data contructor together with appropriate
+-- implementation.
 data Group = Filter (Char -> Bool) Weight
 --            | Choice Char Weight
 
 groupWeight :: Group -> Weight
--- groupWeight (Choice _ w) = w
 groupWeight (Filter _ w) = w
+
+mapWeight :: (Weight -> Weight) -> Group -> Group
+mapWeight f (Filter g w) = Filter g (f w)
            
 -- | Each member function (i.e., insertOrd and substOrd) should return
 -- results in ascending order with respect to weights.
