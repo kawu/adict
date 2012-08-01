@@ -32,4 +32,3 @@ Build-Depends:      base
 		  , vector-binary
 		  , QuickCheck
 		  , mtl
-		  , pqueue
