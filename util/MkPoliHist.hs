@@ -41,12 +41,13 @@ main = do
             | x <- poliEs ]
 
     histEs  <- Hist.parseHist <$> readFile histPath
-    let hist = fromListWith (++)
+    let hist = fmap S.fromList $ fromListWith (++)
             [ (form, [Hist.lxId x])
             | x <- histEs
             , form <- Hist.forms x ]
 
     let poliHist = Poli.joinDict poli hist
-    let xs = [(T.unpack x, y) | (x, y) <- M.toList poliHist]
+    let unSet x = let f (s, y) = (S.toList s, y) in fmap f x
+    let xs = [(T.unpack x, unSet y) | (x, y) <- M.toList poliHist]
     let dawg = D.mkDAWG (fromList xs :: IdTrie)
     encodeFile outPath dawg
