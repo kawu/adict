@@ -1,6 +1,9 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Data.Adict.CostOrd
 ( Group (..)
 , CostOrd (..)
+, toCost
 , Weight
 , groupWeight
 , mapWeight
@@ -20,7 +23,7 @@ import qualified Data.Map as M
 import qualified Data.Char as C
 import Control.Applicative ((<$>), (<*>))
 
-import Data.Adict.Base (Pos)
+import Data.Adict.Base (Pos, Cost(..))
 
 -- | Identifier of DAG node.
 type NodeId = Int
@@ -61,10 +64,6 @@ costDefault =
         ot = not.eq
     posMod = const 1
 
--- -- | Transform CostOrd to plain Cost function.
--- toCost :: CostOrd -> Cost
--- toCost = undefined
-
 -- | Substition desription for some character x.
 data SubDsc = SubDsc
     -- | List of character sets together with a cost of x->y substitution
@@ -104,3 +103,14 @@ mkSDM xs = fmap mkSD $
     M.fromListWith (++)
         [ (x, [(y, w)])
         | (x, y, w) <- xs ]
+
+-- | Transform CostOrd to plain Cost function.
+toCost :: CostOrd -> Cost
+toCost CostOrd{..} =
+    Cost ins del sub
+  where
+    del k x   = deleteOrd x                               * posMod k
+    ins k x   = mini [w | Filter f w <- insertOrd,  f x]  * posMod k
+    sub k x y = mini [w | Filter f w <- substOrd x, f y]  * posMod k
+    mini []   = 0
+    mini xs   = minimum xs
