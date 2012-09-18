@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Data.DAWG.Node
+module NLP.Adicts.DAWG.Node
 ( Node
 , mkNode
 , nodeValue
@@ -9,14 +9,14 @@ module Data.DAWG.Node
 
 import Data.Binary (Binary)
 
-newtype Node a = Node { unNode :: (a, [(Char, Int)]) }
+newtype Node a b = Node { unNode :: (b, [(a, Int)]) }
     deriving (Show, Eq, Ord, Binary)
 
-mkNode :: a -> [(Char, Int)] -> Node a
+mkNode :: b -> [(a, Int)] -> Node a b
 mkNode x xs = Node (x, xs)
 
-nodeValue :: Node a -> a
+nodeValue :: Node a b -> b
 nodeValue = fst . unNode
 
-nodeEdges :: Node a -> [(Char, Int)]
+nodeEdges :: Node a b -> [(a, Int)]
 nodeEdges = snd . unNode

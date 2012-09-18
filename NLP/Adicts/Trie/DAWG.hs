@@ -1,8 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Data.DAWG.Trie
-( DAWG (..)
+module NLP.Adicts.Trie.DAWG
+( DAWG (unDAWG)
 , mkDAWG
 , serialize
 , deserialize
@@ -14,21 +14,27 @@ import Control.Applicative ((<$>))
 import Data.Binary (Binary, get, put)
 import qualified Data.Map as M
 
-import qualified Data.Trie.Class as C
-import Data.Trie.Trie
-import Data.DAWG.Node
+import qualified NLP.Adicts.Trie.Class as C
+import NLP.Adicts.Trie
+import NLP.Adicts.DAWG.Node
 
-newtype DAWG a = DAWG { unDAWG :: Trie a }
+newtype DAWG a b = DAWG { unDAWG :: Trie a b }
     deriving (Eq, Ord, C.Trie)
 
-instance (Ord a, Binary a) => Binary (DAWG a) where
+-- instance Eq a => C.Trie (DAWG a b) where
+--     unTrie      (DAWG t) = unTrie t
+--     valueIn     (DAWG t) = valueIn t
+--     anyChild    (DAWG t) = anyChild t
+--     child x     (DAWG t) = child x t
+
+instance (Ord a, Ord b, Binary a, Binary b) => Binary (DAWG a b) where
     put = put . serialize
     get = deserialize <$> get
 
 mkDAWG :: Ord a => Trie a -> DAWG a
 mkDAWG = deserialize . serialize . DAWG
 
-serialize :: Ord a => DAWG a -> [Node a]
+serialize :: (Ord a, Ord b) => DAWG a b -> [Node a b]
 serialize (DAWG t) = 
     [ mkNode (valueIn t)
         [ (c, m M.! s)
@@ -39,7 +45,7 @@ serialize (DAWG t) =
     reverseMap m = M.fromList [(y, x) | (x, y) <- M.toList m]
 
 -- | FIXME: Null node list case.
-deserialize :: Ord a => [Node a] -> DAWG a
+deserialize :: (Ord a, Ord b) => [Node a b] -> DAWG a b
 deserialize =
     DAWG . snd . M.findMax . foldl' update M.empty
   where
@@ -47,11 +53,12 @@ deserialize =
         let t = C.mkTrie (nodeValue n) [(c, m M.! k) | (c, k) <- nodeEdges n]
         in  M.insert (M.size m) t m
 
--- | Collect unique tries and give them identifiers.
-collect :: Ord a => Trie a -> M.Map (Trie a) Int
+-- | Collect unique tries and assign identifiers to them.
+collect :: (Ord a, Ord b) => Trie a b -> M.Map (Trie a b) Int
 collect t = collect' M.empty t
 
-collect' :: Ord a => M.Map (Trie a) Int -> Trie a -> M.Map (Trie a) Int
+collect' :: (Ord a, Ord b) => M.Map (Trie a b) Int
+         -> Trie a -> M.Map (Trie a b) Int
 collect' m0 t = M.alter f t m
   where
     !m = foldl' collect' m0 (M.elems $ edgeMap t)

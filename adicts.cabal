@@ -1,0 +1,36 @@
+name:               adicts
+version:            0.1.0
+synopsis:           Approximate dictionary searching
+description:
+    TODO
+license:            BSD3
+license-file:       LICENSE
+cabal-version:      >= 1.2
+author:             Jakub Waszczuk
+maintainer:         waszczuk.kuba@gmail.com
+stability:          experimental
+category:           Natural Language Processing
+homepage:           https://github.com/kawu/adicts
+build-type:         Simple
+
+library
+    build-depends:
+        base >= 4 && < 5
+      , containers
+      , vector
+      , array
+      , binary
+
+    exposed-modules:
+        NLP.Adicts.Core
+      , NLP.Adicts.Dist
+      , NLP.Adicts.Brute
+      , NLP.Adicts.Trie
+      , NLP.Adicts.DAWG.Node
+      , NLP.Adicts.DAWG
+
+    ghc-options: -Wall -O2
+
+source-repository head
+    type: git
+    location: git://github.com/kawu/adicts.git

@@ -1,4 +1,4 @@
-module Data.Adict
+module NLP.Adicts
 ( module Data.Trie.Class
 , module Data.Adict.Fast
 ) where
