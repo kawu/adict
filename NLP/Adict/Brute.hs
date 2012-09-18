@@ -1,11 +1,11 @@
-module NLP.Adicts.Brute
+module NLP.Adict.Brute
 ( search
 ) where
 
 import Data.Maybe (mapMaybe)
 
-import NLP.Adicts.Core
-import NLP.Adicts.Dist
+import NLP.Adict.Core
+import NLP.Adict.Dist
 
 -- | Find all words within a list with restricted generalized edit distance
 -- from x lower or equall to k.

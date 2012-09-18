@@ -1,11 +1,9 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Data.Adict.CostOrd
+module NLP.Adict.CostDiv
 ( Group (..)
-, CostOrd (..)
+, CostDiv (..)
 , toCost
-, Weight
-, groupWeight
 , mapWeight
 , costDefault
 
@@ -20,39 +18,29 @@ module Data.Adict.CostOrd
 
 import qualified Data.Set as S
 import qualified Data.Map as M
-import qualified Data.Char as C
-import Control.Applicative ((<$>), (<*>))
 
-import Data.Adict.Base (Pos, Cost(..))
-
--- | Identifier of DAG node.
-type NodeId = Int
-
--- | Weight of edit operation
-type Weight = Double
+import NLP.Adict.Core (Pos, Cost(..), Weight)
 
 -- | TODO: Add Choice data contructor together with appropriate
--- implementation.
-data Group = Filter (Char -> Bool) Weight
---            | Choice Char Weight
+-- implementation: Choice Char Weight
+data Group a = Filter
+    { predic :: a -> Bool
+    , weight :: Weight }
 
-groupWeight :: Group -> Weight
-groupWeight (Filter _ w) = w
-
-mapWeight :: (Weight -> Weight) -> Group -> Group
-mapWeight f (Filter g w) = Filter g (f w)
+mapWeight :: (Weight -> Weight) -> Group a -> Group a
+mapWeight f g = g { weight = f (weight g) }
            
--- | Each member function (i.e., insertOrd and substOrd) should return
+-- | Each member function (i.e., insert and subst) should return
 -- results in ascending order with respect to weights.
-data CostOrd = CostOrd
-    { insertOrd :: [Group]
-    , deleteOrd :: Char -> Weight
-    , substOrd  :: Char -> [Group]
-    , posMod    :: Pos  -> Double }
+data CostDiv a = CostDiv
+    { insert ::        [Group a]
+    , delete :: a   -> Weight
+    , subst  :: a   -> [Group a]
+    , posMod :: Pos -> Weight }
 
-costDefault :: CostOrd
+costDefault :: Eq a => CostDiv a
 costDefault =
-    CostOrd insert delete subst posMod
+    CostDiv insert delete subst posMod
   where
     insert   = [Filter (const True) 1]
     delete _ = 1
@@ -63,17 +51,19 @@ costDefault =
         eq = (x==)
         ot = not.eq
     posMod = const 1
+{-# INLINABLE costDefault #-}
+{-# SPECIALIZE costDefault :: CostDiv Char #-}
 
 -- | Substition desription for some character x.
-data SubDsc = SubDsc
+data SubDsc a = SubDsc
     -- | List of character sets together with a cost of x->y substitution
     -- for any character y in the set.
-    { sdFs  :: [(S.Set Char, Double)]
+    { sdFs  :: [(S.Set a, Weight)]
     -- | Sum of sgFs sets.
-    , sdTo  :: S.Set Char }
+    , sdTo  :: S.Set a }
     deriving (Show, Read)
 
-mkSD :: [(Char, Double)] -> SubDsc
+mkSD :: Ord a => [(a, Weight)] -> SubDsc a
 mkSD xs = SubDsc
     { sdFs = map swap . M.toAscList . fmap S.fromList
            $ M.fromListWith (++) [(w, [x]) | (x, w) <- xs]
@@ -81,36 +71,36 @@ mkSD xs = SubDsc
   where
     swap (x, y) = (y, x)
 
-sdGroups :: SubDsc -> [Group]
+sdGroups :: Ord a => SubDsc a -> [Group a]
 sdGroups dsc =
     [ Filter (`S.member` charSet) weight
     | (charSet, weight) <- sdFs dsc ]
 
-sdMember :: Char -> SubDsc -> Bool
+sdMember :: Ord a => a -> SubDsc a -> Bool
 sdMember x dsc
     | x `S.member` sdTo dsc = True
     | otherwise = False
 
-type SubDscMap = M.Map Char SubDsc
+type SubDscMap a = M.Map a (SubDsc a)
 
-subDscOn :: Char -> SubDscMap -> SubDsc
+subDscOn :: Ord a => a -> SubDscMap a -> SubDsc a
 subDscOn x sdm = case M.lookup x sdm of
     Just sd -> sd
     Nothing -> SubDsc [] S.empty
 
-mkSDM :: [(Char, Char, Double)] -> SubDscMap
+mkSDM :: Ord a => [(a, a, Weight)] -> SubDscMap a
 mkSDM xs = fmap mkSD $
     M.fromListWith (++)
         [ (x, [(y, w)])
         | (x, y, w) <- xs ]
 
--- | Transform CostOrd to plain Cost function.
-toCost :: CostOrd -> Cost
-toCost CostOrd{..} =
+-- | Transform CostDiv to plain Cost function.
+toCost :: CostDiv a -> Cost a
+toCost CostDiv{..} =
     Cost ins del sub
   where
-    del k x   = deleteOrd x                               * posMod k
-    ins k x   = mini [w | Filter f w <- insertOrd,  f x]  * posMod k
-    sub k x y = mini [w | Filter f w <- substOrd x, f y]  * posMod k
+    del k x   = delete x                                * posMod k
+    ins k x   = mini [w | Filter f w <- insert,  f x]   * posMod k
+    sub k x y = mini [w | Filter f w <- subst x, f y]   * posMod k
     mini []   = 0
     mini xs   = minimum xs

@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE BangPatterns #-}
 
-module NLP.Adicts.Trie
+module NLP.Adict.Trie
 ( Trie (..)
 , unTrie
 , child
@@ -31,7 +31,7 @@ import Data.List (foldl')
 import Data.Binary (Binary, get, put)
 import qualified Data.Map as M
 
-import NLP.Adicts.DAWG.Node
+import NLP.Adict.DAWG.Node
 
 data Trie a b = Trie
     { valueIn :: b

@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module NLP.Adicts.DAWG.Node
+module NLP.Adict.DAWG.Node
 ( Node
 , mkNode
 , nodeValue

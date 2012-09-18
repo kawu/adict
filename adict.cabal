@@ -1,4 +1,4 @@
-name:               adicts
+name:               adict
 version:            0.1.0
 synopsis:           Approximate dictionary searching
 description:
@@ -22,12 +22,13 @@ library
       , binary
 
     exposed-modules:
-        NLP.Adicts.Core
-      , NLP.Adicts.Dist
-      , NLP.Adicts.Brute
-      , NLP.Adicts.Trie
-      , NLP.Adicts.DAWG.Node
-      , NLP.Adicts.DAWG
+        NLP.Adict.Core
+        NLP.Adict.CostDiv
+--       , NLP.Adict.Dist
+--       , NLP.Adict.Brute
+--       , NLP.Adict.Trie
+--       , NLP.Adict.DAWG.Node
+--       , NLP.Adict.DAWG
 
     ghc-options: -Wall -O2
 

@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module NLP.Adicts.DAWG
+module NLP.Adict.DAWG
 ( DAWG (..)
 , size
 , row
@@ -17,7 +17,7 @@ import Data.Maybe (listToMaybe)
 import Data.Binary (Binary, get, put)
 import qualified Data.Vector as V
 
-import NLP.Adicts.DAWG.Node
+import NLP.Adict.DAWG.Node
 
 data DAWG a b = DAWG
     { root  :: Int

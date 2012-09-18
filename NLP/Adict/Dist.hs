@@ -1,4 +1,4 @@
-module NLP.Adicts.Dist
+module NLP.Adict.Dist
 ( editDist
 ) where
 
@@ -6,7 +6,7 @@ import qualified Data.Array as A
 import qualified Data.Vector as V
 import Data.Ix (range)
 
-import NLP.Adicts.Core
+import NLP.Adict.Core
 
 -- | Restricted generalized edit distance between two words with
 -- given cost function.
