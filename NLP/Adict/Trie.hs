@@ -65,7 +65,7 @@ mkTrie :: Ord a => b -> [(a, Trie a b)] -> Trie a b
 mkTrie !v !cs = Trie v (M.fromList cs)
 {-# INLINE mkTrie #-}
 
-empty :: Ord a => Trie a (Maybe b)
+empty :: Ord a => TrieD a b
 empty = mkTrie Nothing []
 {-# INLINE empty #-}
 
@@ -85,7 +85,7 @@ substChild !x !trie !newChild =
     -> Trie Char b
     -> Trie Char b #-}
 
-insert :: Ord a => [a] -> b -> Trie a (Maybe b) -> Trie a (Maybe b)
+insert :: Ord a => [a] -> b -> TrieD a b -> TrieD a b
 insert [] v t = setValue (Just v) t
 insert (x:xs) v t = substChild x t . insert xs v $
     case child x t of
@@ -94,8 +94,8 @@ insert (x:xs) v t = substChild x t . insert xs v $
 {-# INLINABLE insert #-}
 {-# SPECIALIZE insert
     :: String -> b
-    -> Trie Char (Maybe b)
-    -> Trie Char (Maybe b) #-}
+    -> TrieD Char b
+    -> TrieD Char b #-}
 
 size :: Trie a b -> Int
 size t = 1 + sum (map (size.snd) (anyChild t))
@@ -103,15 +103,15 @@ size t = 1 + sum (map (size.snd) (anyChild t))
 follow :: Ord a => [a] -> Trie a b -> Maybe (Trie a b)
 follow xs t = foldr (>=>) return (map child xs) t
 
-lookup :: Ord a => [a] -> Trie a (Maybe b) -> Maybe b
+lookup :: Ord a => [a] -> TrieD a b -> Maybe b
 lookup xs t = follow xs t >>= valueIn
 
-fromList :: Ord a => [([a], b)] -> Trie a (Maybe b)
+fromList :: Ord a => [([a], b)] -> TrieD a b
 fromList xs =
     let update t (x, v) = insert x v t
     in  foldl' update empty xs
 
-toList :: Trie a (Maybe b) -> [([a], b)]
+toList :: TrieD a b -> [([a], b)]
 toList t = case valueIn t of
     Just y -> ([], y) : lower
     Nothing -> lower
@@ -120,7 +120,7 @@ toList t = case valueIn t of
     goDown (x, t') = map (addChar x) $ toList t'
     addChar x (xs, y) = (x:xs, y)
 
-fromLang :: Ord a => [[a]] -> Trie a (Maybe ())
+fromLang :: Ord a => [[a]] -> TrieD a ()
 fromLang xs = fromList [(x, ()) | x <- xs]
 
 toDAWG :: (Ord a, Ord b) => Trie a b -> Trie a b

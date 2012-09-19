@@ -5,7 +5,7 @@ description:
     TODO
 license:            BSD3
 license-file:       LICENSE
-cabal-version:      >= 1.2
+cabal-version:      >= 1.8
 author:             Jakub Waszczuk
 maintainer:         waszczuk.kuba@gmail.com
 stability:          experimental
@@ -34,6 +34,21 @@ library
       , NLP.Adict.Nearest
 
     ghc-options: -Wall -O2
+
+test-suite tests
+    type: exitcode-stdio-1.0
+    hs-source-dirs: tests
+    main-is: Properties.hs
+    build-depends:
+        base >= 4 && < 5.0
+      , QuickCheck
+      , containers
+      , vector
+      , test-framework >= 0.3.3
+      , test-framework-quickcheck2 >= 0.2.9
+      , adict
+
+  ghc-options: -Wall
 
 source-repository head
     type: git

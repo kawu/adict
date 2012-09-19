@@ -1,39 +1,39 @@
 {-# LANGUAGE RecordWildCards #-}
 
--- QuickCheck properties, which should be satisfied by Adict.
-
-module Data.Adict.Check
-( CostDesc (..)
-, fromDesc
-, Lang
-, arbitraryLang
-, getWords
-, propConsistency
-) where
+-- | QuickCheck properties which should be satisfied by the Adict.
 
 import Control.Applicative ((<$>), (<*>), (<|>))
 import qualified Data.Set as S
 import qualified Data.Map as M
+import qualified Data.Vector as V
 import Data.Maybe (fromJust)
-import Test.QuickCheck
 
-import qualified Data.Adict.Brute as B
-import qualified Data.Adict.Slow as S
-import qualified Data.Adict.Fast as F
-import qualified Data.Trie.Trie as T
-import qualified Data.Trie.Class as C
-import Data.Adict.Base
+import Test.QuickCheck hiding (listOf)
+import Test.Framework (Test, defaultMain)
+import Test.Framework.Providers.QuickCheck2 (testProperty)
+
+import NLP.Adict.Core
+import qualified NLP.Adict.Brute as Br
+import qualified NLP.Adict.Basic as Ba
+import qualified NLP.Adict.Trie as Trie
 
 -- | Check parameters.
+posRange :: (Int, Int)
 posRange  = (0, 4)	-- ^ Position of random edit op
+
+valRange :: (Val, Val)
 valRange  = (0, 10)	-- ^ Weight of edit op 
+
+descRange :: (Int, Int)
 descRange = (0, 25)	-- ^ Number of random edit ops of given type
+
+langRange :: (Int, Int)
 langRange = (0, 25)	-- ^ Size of language
 
 type Val = Double
 
 -- | Helper structure with Arbitrary instance (implementation below),
--- which can be transformed to an Adict Cost function.
+-- which can be transformed to the Adict Cost function.
 data CostDesc = CostDesc
     { insD :: M.Map (Pos, Char) Val
     , delD :: M.Map (Pos, Char) Val
@@ -41,8 +41,8 @@ data CostDesc = CostDesc
     deriving Show
 
 -- | Construct Cost function from a description structure.
-fromDesc :: CostDesc -> Cost
-fromDesc CostDesc{..} = Cost ins del sub
+toCost :: CostDesc -> Cost Char
+toCost CostDesc{..} = Cost ins del sub
   where
     ins i x = fromJust $ (i, x) `M.lookup` insD <|> return 1
     del i x = fromJust $ (i, x) `M.lookup` delD <|> return 1
@@ -84,17 +84,23 @@ instance Arbitrary Lang where
 -- | QuickCheck property: set of matching dictionary entries should
 -- be the same no matter which searching function is used.
 propConsistency :: CostDesc -> Positive Val -> String -> Lang -> Bool
-propConsistency costDesc kP xR lang = eq
-    [ nub (B.search cost k x ys)
-    , nub (S.search cost k x trie)
-    , nub (F.search cost k x trie) ]
+propConsistency costDesc kP xR lang =
+    let br = (nub . map unWord) (Br.search cost k x ys)
+        ba = nub (Ba.search cost k x trie)
+    in  br == ba
   where
-    x = fromString xR
-    eq xs = and [x == x' | (x, x') <- zip xs (tail xs)] 
-    cost = fromDesc costDesc
+    x = V.fromList xR
+    cost = toCost costDesc
     k = getPositive kP
-    trie = C.fromLang (getWords lang) :: T.Trie (Maybe ())
-    ys = [(fromString y, ()) | y <- getWords lang]
+    trie = Trie.fromLang (getWords lang)
+    ys = [(V.fromList y, ()) | y <- getWords lang]
+    unWord (word, v, w) = (V.toList word, v, w)
 
 nub :: Ord a => [a] -> [a]
 nub = S.toList . S.fromList
+
+main :: IO ()
+main = defaultMain tests
+
+tests :: [Test]
+tests = [testProperty "consistency" propConsistency]
