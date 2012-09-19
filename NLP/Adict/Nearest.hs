@@ -1,51 +1,51 @@
-module Data.Adict.ShortestPath
+module NLP.Adict.Nearest
 ( search
 ) where
 
 import Control.Applicative ((<$>))
 import Control.Monad (guard)
-import Data.Maybe (isJust, maybeToList, catMaybes)
-import Data.List (group, sortBy)
+import Data.Maybe (isJust, catMaybes)
+import Data.List (sortBy)
 import Data.Ord (comparing)
 import Data.Function (on)
+import qualified Data.Vector as V
 
-import Data.Adict.Base
-import Data.DAWG.Class
-import Data.Graph.ShortestPath
-import Data.Adict.CostOrd
+import NLP.Adict.Core (Pos, Weight, Word, (#))
+import NLP.Adict.CostDiv
+import NLP.Adict.DAWG
+import NLP.Adict.Graph
 
 type NodeID  = Int
-data Node = Node
+data Node a = Node
     { nodeID   :: {-# UNPACK #-} !NodeID
     , nodePos  :: {-# UNPACK #-} !Pos
-    , nodeChar :: !(Maybe Char) }   -- ^ Can we unpack this?
+    , nodeChar :: !(Maybe a) }
     deriving (Show)
 
+proxy :: Node a -> (NodeID, Pos)
+proxy n = (nodeID n, nodePos n)
 {-# INLINE proxy #-}
-proxy :: Node -> (NodeID, Pos)
-proxy (Node id k _) = (id, k)
 
-instance Eq Node where
+instance Eq (Node a) where
     (==) = (==) `on` proxy
 
-instance Ord Node where
+instance Ord (Node a) where
     compare = compare `on` proxy
 
-type Dag d a = d (Maybe a)
-
-data Which
+data Which a
     = Del Weight
-    | Ins Group
-    | Sub Group
+    | Ins (Group a)
+    | Sub (Group a)
 
-weight :: Which -> Weight
-weight (Del w) = w
-weight (Ins g) = groupWeight g
-weight (Sub g) = groupWeight g
+weightOf :: Which a -> Weight
+weightOf (Del w) = w
+weightOf (Ins g) = weight g
+weightOf (Sub g) = weight g
+{-# INLINE weightOf #-}
 
--- | We can check, if CostOrd satisfies basic properties!
-search :: DAWG d => CostOrd -> Double -> Word -> Dag d a
-       -> Maybe (String, a, Double)
+-- | We can check, if CostDiv satisfies basic properties.  On the other
+-- hand, we do not do this for plain Cost function.
+search :: CostDiv a -> Double -> Word a -> DAWGD a b -> Maybe ([a], b, Double)
 search cost z x dag = do
     (xs, w) <- minPath z edgesFrom isEnd (Node (root dag) 0 Nothing)
     let form = catMaybes . map nodeChar $ xs
@@ -53,19 +53,19 @@ search cost z x dag = do
     return (form, r, w)
   where
     edgesFrom (Node n i _) =
-        concatMap follow $ sortBy (comparing weight) groups
+        concatMap follow $ sortBy (comparing weightOf) groups
       where
         j = i+1
 
         groups = insGroups ++ delGroups ++ subGroups
         insGroups = Ins . mapWeight (*posMod cost i) <$>
-            insertOrd cost
+            insert cost
         delGroups = Del . (*posMod cost j) <$> do
-            guard (j <= wordLength x)
-            return $ deleteOrd cost (x#j)
+            guard (j <= V.length x)
+            return $ delete cost (x#j)
         subGroups = Sub . mapWeight (*posMod cost j) <$> do
-            guard (j <= wordLength x)
-            substOrd cost (x#j)
+            guard (j <= V.length x)
+            subst cost (x#j)
 
         follow (Ins (Filter f w)) =
             [ (Node m i (Just c), w)
@@ -79,5 +79,4 @@ search cost z x dag = do
             | (c, m) <- edges dag n
             , f c ]
 
-    isEnd (Node n k _) = k == wordLength x
-                      && isJust (valueIn dag n)
+    isEnd (Node n k _) = k == V.length x && isJust (valueIn dag n)

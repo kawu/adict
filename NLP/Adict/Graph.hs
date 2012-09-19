@@ -1,13 +1,13 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module Data.Graph.ShortestPath
+module NLP.Adict.Graph
 ( minPath
+, Edges
+, IsEnd
 ) where
 
-import Control.Monad (when)
 import Data.Function (on)
-import Data.List (foldl')
 import qualified Data.Set as P
 import qualified Data.Map as M
 
@@ -43,12 +43,11 @@ instance (Ord n, Ord w) => Ord (Adj n w) where
     compare = compare `on` swap . proxy
 
 -- | Find shortes path from a beginning node to any ending node.
-minPath :: (Show n, Show w, Ord n, Ord w, Num w, Fractional w) => w
-        -> Edges n w -> IsEnd n -> n
-        -> Maybe ([n], w)
-minPath threshold edgesFrom isEnd n =
+minPath :: (Ord n, Ord w, Num w, Fractional w)
+        => w -> Edges n w -> IsEnd n -> n -> Maybe ([n], w)
+minPath threshold edgesFrom isEnd beg =
 
-    shortest M.empty $ P.singleton (Adj n [(n, 0)])
+    shortest M.empty $ P.singleton (Adj beg [(beg, 0)])
 
   where
 
@@ -58,20 +57,20 @@ minPath threshold edgesFrom isEnd n =
         (adj, q') <- P.minView q
         process q' adj
       where
-        process q adj
+        process pq adj
             | isEnd n        = Just (reverse (trace v' n), w)
-            | n `M.member` v = shortest v  q'
-            | otherwise      = shortest v' q''
+            | n `M.member` v = shortest v  pq'
+            | otherwise      = shortest v' pq''
           where
             (n, w) = proxy adj
             pr = parent adj
             v' = M.insert n pr v
-            q' = push q pr (folls adj)
-            q'' = push q' n $
+            pq' = push pq pr (folls adj)
+            pq'' = push pq' n $
                     takeWhile ((<= threshold) . snd)
-                    [(m, w + v) | (m, v) <- edgesFrom n]
+                    [(m, w + u) | (m, u) <- edgesFrom n]
 
-    push q p [] = q
+    push q _ [] = q
     push q p xs = P.insert (Adj p xs) q
 
     trace v n

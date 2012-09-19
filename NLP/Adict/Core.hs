@@ -4,7 +4,7 @@
 module NLP.Adict.Core
 ( Word
 , Pos
-, Weight (unWeight)
+, Weight
 , costDefault
 , Cost (..)
 , (#)
@@ -16,35 +16,14 @@ import qualified Data.Vector as V
 x#i = x V.! (i-1)
 {-# INLINE (#) #-}
 
+-- | Word with 'a' character type.
 type Word a = V.Vector a
 
 -- | Position.
 type Pos = Int
 
--- | Non-negative weight (cost) of edit operation.
-newtype Weight = Weight { unWeight :: Double }
-    deriving (Show, Read, Eq, Ord)
-
-mkWeight :: Double -> Weight
-mkWeight w
-    | w < 0     = error "mkWeight: negative weight"
-    | otherwise = Weight w
-
-instance Num Weight where
-    Weight u * Weight w = Weight (u * w)
-    Weight u + Weight w = Weight (u + w)
-    Weight u - Weight w = mkWeight (u - w)
-    negate _            = error "negate weight" 
-    abs                 = id    -- ^ We know its non-negative
-    signum (Weight x)
-        | x == 0    = 0
-        | x >  0    = 1
-        | otherwise = error "signum weight"
-    fromInteger = mkWeight . fromInteger
-
-instance Fractional Weight where
-    Weight u / Weight w = Weight (u / w)
-    fromRational = mkWeight . fromRational
+-- | Cost of edit operation.  It has to be non-negative!
+type Weight = Double
 
 -- | Cost represents a cost (or weight) of a symbol insertion, deletion or
 -- substitution.  It can depend on edit operation position and on symbol

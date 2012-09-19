@@ -2,7 +2,8 @@
 {-# LANGUAGE BangPatterns #-}
 
 module NLP.Adict.Trie
-( Trie (..)
+( TrieD
+, Trie (..)
 , unTrie
 , child
 , anyChild
@@ -10,7 +11,6 @@ module NLP.Adict.Trie
 , setValue
 , substChild
 , insert
--- , fromTrie
 
 , size
 , follow
@@ -32,6 +32,8 @@ import Data.Binary (Binary, get, put)
 import qualified Data.Map as M
 
 import NLP.Adict.DAWG.Node
+
+type TrieD a b = Trie a (Maybe b)
 
 data Trie a b = Trie
     { valueIn :: b

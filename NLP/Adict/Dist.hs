@@ -10,7 +10,7 @@ import NLP.Adict.Core
 
 -- | Restricted generalized edit distance between two words with
 -- given cost function.
-editDist :: Cost a -> Word a -> Word a -> Double
+editDist :: Cost a -> Word a -> Word a -> Weight
 editDist cost x y =
     dist' m n
   where

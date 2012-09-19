@@ -30,8 +30,8 @@ data Group a = Filter
 mapWeight :: (Weight -> Weight) -> Group a -> Group a
 mapWeight f g = g { weight = f (weight g) }
            
--- | Each member function (i.e., insert and subst) should return
--- results in ascending order with respect to weights.
+-- | Cost function with edit operations divided with respect to weight.
+-- Two operations with the same cost should be assigned to the same group.
 data CostDiv a = CostDiv
     { insert ::        [Group a]
     , delete :: a   -> Weight
