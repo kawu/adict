@@ -2,7 +2,7 @@ name:               adict
 version:            0.1.0
 synopsis:           Approximate dictionary searching
 description:
-    Approximate dictionary searching library for Haskell.
+    Approximate dictionary searching library.
 license:            BSD3
 license-file:       LICENSE
 cabal-version:      >= 1.8
@@ -10,7 +10,7 @@ author:             Jakub Waszczuk
 maintainer:         waszczuk.kuba@gmail.com
 stability:          experimental
 category:           Natural Language Processing
-homepage:           https://github.com/kawu/adicts
+homepage:           https://github.com/kawu/adict
 build-type:         Simple
 
 library
@@ -53,4 +53,4 @@ test-suite tests
 
 source-repository head
     type: git
-    location: git://github.com/kawu/adicts.git
+    location: git://github.com/kawu/adict.git
