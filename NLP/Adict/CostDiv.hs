@@ -3,7 +3,6 @@
 module NLP.Adict.CostDiv
 ( Group (..)
 , CostDiv (..)
-, toCost
 , mapWeight
 , costDefault
 
@@ -13,6 +12,9 @@ module NLP.Adict.CostDiv
 , SubMap
 , subOn
 , mkSubMap
+
+, toCost
+, toCostInf
 ) where
 
 import qualified Data.Set as S
@@ -78,14 +80,20 @@ mkSubMap xs = fmap mkSub $
         [ (x, [(y, w)])
         | (x, y, w) <- xs ]
 
--- | Transform CostDiv to plain Cost function.
-toCost :: CostDiv a -> Cost a
-toCost CostDiv{..} =
+-- | Transform CostDiv to plain Cost function with default weight value.
+toCost :: Double -> CostDiv a -> Cost a
+toCost defa CostDiv{..} =
     Cost ins del sub
   where
     del k x   = delete x                                * posMod k
     ins k x   = mini [w | Filter f w <- insert,  f x]   * posMod k
     sub k x y = mini [w | Filter f w <- subst x, f y]   * posMod k
-    mini []   = inf
+    mini []   = defa
     mini xs   = minimum xs
-    inf       = 1 / 0
+
+-- | Transform CostDiv to plain Cost function with default weight value
+-- set to +Infinity.
+toCostInf :: CostDiv a -> Cost a
+toCostInf =
+    let inf = 1 / 0
+    in  toCost inf

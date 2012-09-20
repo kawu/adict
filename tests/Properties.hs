@@ -4,8 +4,6 @@
 
 import Control.Applicative ((<$>), (<*>), (<|>), pure)
 import Data.Maybe (fromJust)
--- import Data.Ord (comparing)
--- import Data.List (minimumBy)
 import qualified Data.Set as S
 import qualified Data.Map as M
 import qualified Data.Vector as V
@@ -22,8 +20,6 @@ import qualified NLP.Adict.Nearest as Nr
 import qualified NLP.Adict.Trie as Trie
 import qualified NLP.Adict.DAWG as DAWG
 
--- import Debug.Trace (trace)
-
 -- | Check parameters.
 posRange :: (Int, Int)
 posRange  = (0, 4)	-- ^ Position of random edit op
@@ -39,6 +35,24 @@ descRange = (0, 25)	-- ^ Number of random edit ops of given type
 
 langRange :: (Int, Int)
 langRange = (0, 25)	-- ^ Size of language
+
+arbitraryPos :: Gen Pos
+arbitraryPos = choose posRange
+
+arbitraryPosMod :: Gen Double
+arbitraryPosMod = choose posModRange
+
+arbitraryWeight :: Gen Weight
+arbitraryWeight = choose weightRange
+
+arbitraryChar :: Gen Char
+arbitraryChar = elements ['a'..'z']
+
+arbitraryWord :: Gen String
+arbitraryWord = listOf arbitraryChar
+
+arbitraryLang :: (Int, Int) -> Gen [String]
+arbitraryLang r = nub <$> (flip vectorOf arbitraryWord =<< choose r)
 
 -- | Helper structure with Arbitrary instance (implementation below),
 -- which can be transformed to the Adict Cost function.
@@ -58,15 +72,6 @@ toCost CostDesc{..} = Cost ins del sub
     sub' x y
         | x == y    = 0
         | otherwise = 1
-
-arbitraryPos :: Gen Pos
-arbitraryPos = choose posRange
-
-arbitraryPosMod :: Gen Double
-arbitraryPosMod = choose posModRange
-
-arbitraryWeight :: Gen Weight
-arbitraryWeight = choose weightRange
 
 instance Arbitrary CostDesc where
     arbitrary = do
@@ -121,16 +126,6 @@ toCostDiv CostDivDesc{..} = C.CostDiv ins del sub posMod
         ++ [C.Filter (const True) 1]
     posMod k = fromJust $ k `M.lookup` posModD <|> pure 1
 
-arbitraryChar :: Gen Char
-arbitraryChar = elements ['a'..'z']
-
-arbitraryWord :: Gen String
-arbitraryWord = listOf arbitraryChar
-
-arbitraryLang :: (Int, Int) -> Gen [String]
-arbitraryLang r = nub <$> (flip vectorOf arbitraryWord =<< choose r)
--- arbitraryLang r = nub <$> (vector =<< choose r)
-
 -- | Custom language generation.
 newtype Lang = Lang [String] deriving Show
 getWords :: Lang -> [String]
@@ -155,25 +150,23 @@ pBaseEqBrute costDesc kP xR lang =
 
 pBaseEqNearest :: CostDivDesc -> Positive Double -> String -> Lang -> Bool
 pBaseEqNearest costDesc kP xR lang =
-    let ba = Ba.search cost k x trie    -- (minimumBy (comparing _3) xs)
+    let ba = Ba.search cost k x trie
         nr = Nr.search costDiv k x dawg
     in  check ba nr
   where
-    check ys (Just y) = y `elem` ys
+    check [] (Just _) = False
     check [] Nothing  = True
+    check ys (Just y) = y `elem`
+        ( let thd (_, _, c) = c
+              m = minimum . map thd $ ys
+          in  filter ((<=m) . thd) ys )
     check _  _        = False
 
---     check xs (Just x) = trace (showIt x xs) (x `elem` xs)
---     check [] Nothing  = trace "NOPE" True
---     check xs x        = trace (showIt x xs) False
---     showIt x xs = "[x]: " ++ show x ++ " [xs]: " ++ show xs
-
-    _3 (_, _, t) = t
     x = V.fromList xR
     k = getPositive kP
 
     costDiv = toCostDiv costDesc
-    cost = C.toCost costDiv
+    cost = C.toCostInf costDiv
 
     trie = Trie.fromLang (getWords lang)
     dawg = DAWG.deserialize . Trie.serialize $ trie
