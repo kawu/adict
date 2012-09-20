@@ -19,6 +19,7 @@ library
       , containers
       , vector
       , array
+      , pqueue
       , binary
 
     exposed-modules:

@@ -8,12 +8,13 @@ module NLP.Adict.Graph
 ) where
 
 import Data.Function (on)
-import qualified Data.Set as P
+import qualified Data.PQueue.Min as P
 import qualified Data.Map as M
 
--- | Adjacent list for a given node @n. We assume, that it
+-- | Adjacent list for a given node @n. We assume, that the list
 -- is given in an ascending order.
-type Edges n w = n -> [(n, w)]
+type Edges n w = n -> [(w, n)]
+type Edge n w  = (n, w, n)
 
 -- | Is @n node an ending node?
 type IsEnd n = n -> Bool
@@ -21,60 +22,66 @@ type IsEnd n = n -> Bool
 -- | Non-empty list of adjacent nodes given in ascending order.
 -- We use new data type to implement custom Eq and Ord instances.
 data Adj n w = Adj
-    { parent :: n
-    , unAdj  :: [(n, w)] }
+    { from :: n
+    , to   :: [(w, n)] }
+    deriving Show
 
+proxy :: Adj n w -> (w, n)
+proxy = head . to
 {-# INLINE proxy #-}
-proxy :: Adj n w -> (n, w)
-proxy = head . unAdj
 
+folls :: Adj n w -> [(w, n)]
+folls = tail . to
 {-# INLINE folls #-}
-folls :: Adj n w -> [(n, w)]
-folls = tail . unAdj
-
-{-# INLINE swap #-}
-swap :: (a, b) -> (b, a)
-swap ~(x, y) = (y, x)
 
 instance (Eq n, Eq w) => Eq (Adj n w) where
-    (==) = (==) `on` swap . proxy
+    (==) = (==) `on` proxy
 
 instance (Ord n, Ord w) => Ord (Adj n w) where
-    compare = compare `on` swap . proxy
+    compare = compare `on` proxy
+
+-- | Remove minimal edge (from, weight, to) from the queue.
+minView :: (Ord n, Ord w) => P.MinQueue (Adj n w)
+        -> Maybe (Edge n w, P.MinQueue (Adj n w))
+minView queue = do
+    (adj, queue') <- P.minView queue
+    let p       = from adj
+        (w, q)  = proxy adj
+        e       = (p, w, q)
+    return (e, push queue' p (folls adj))
+
+push :: (Ord n, Ord w) => P.MinQueue (Adj n w) -> n
+     -> [(w, n)] -> P.MinQueue (Adj n w)
+push queue _ [] = queue
+push queue p xs = P.insert (Adj p xs) queue
 
 -- | Find shortes path from a beginning node to any ending node.
-minPath :: (Ord n, Ord w, Num w, Fractional w)
+minPath :: (Show n, Show w, Ord n, Ord w, Num w, Fractional w)
         => w -> Edges n w -> IsEnd n -> n -> Maybe ([n], w)
 minPath threshold edgesFrom isEnd beg =
 
-    shortest M.empty $ P.singleton (Adj beg [(beg, 0)])
+    shortest M.empty $ P.singleton (Adj beg [(0, beg)])
 
   where
 
-    -- | @v -- set of visited nodes.
-    --   @q -- priority queue,
-    shortest v q = do
-        (adj, q') <- P.minView q
-        process q' adj
+    -- | @visited -- set of visited nodes.
+    --   @queue -- priority queue,
+    shortest visited queue = do
+        (edge, queue') <- minView queue
+        shortest' visited queue' edge
+
+    shortest' visited queue (p, w, q)
+        | isEnd q               = Just (reverse (trace visited' q), w)
+        | q `M.member` visited  = shortest visited  queue
+        | otherwise             = shortest visited' queue'
       where
-        process pq adj
-            | isEnd n        = Just (reverse (trace v' n), w)
-            | n `M.member` v = shortest v  pq'
-            | otherwise      = shortest v' pq''
-          where
-            (n, w) = proxy adj
-            pr = parent adj
-            v' = M.insert n pr v
-            pq' = push pq pr (folls adj)
-            pq'' = push pq' n $
-                    takeWhile ((<= threshold) . snd)
-                    [(m, w + u) | (m, u) <- edgesFrom n]
+        visited' = M.insert q p visited
+        queue' = push queue q $
+                takeWhile ((<= threshold) . fst)
+                [(w + u, s) | (u, s) <- edgesFrom q]
 
-    push q _ [] = q
-    push q p xs = P.insert (Adj p xs) q
-
-    trace v n
+    trace visited n
         | m == n    = [n]
-        | otherwise = n : trace v m
+        | otherwise = n : trace visited m
       where
-        m = v M.! n
+        m = visited M.! n

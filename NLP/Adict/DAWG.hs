@@ -11,6 +11,9 @@ module NLP.Adict.DAWG
 , valueIn
 , edges
 , edgeOn
+
+, serialize
+, deserialize
 ) where
 
 import Control.Applicative ((<$>))

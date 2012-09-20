@@ -7,13 +7,12 @@ module NLP.Adict.CostDiv
 , mapWeight
 , costDefault
 
-, SubDsc (..)
-, mkSD
-, sdGroups
-, sdMember
-, SubDscMap
-, subDscOn
-, mkSDM
+, Sub
+, mkSub
+, unSub
+, SubMap
+, subOn
+, mkSubMap
 ) where
 
 import qualified Data.Set as S
@@ -55,41 +54,26 @@ costDefault =
 {-# SPECIALIZE costDefault :: CostDiv Char #-}
 
 -- | Substition desription for some character x.
-data SubDsc a = SubDsc
-    -- | List of character sets together with a cost of x->y substitution
-    -- for any character y in the set.
-    { sdFs  :: [(S.Set a, Weight)]
-    -- | Sum of sgFs sets.
-    , sdTo  :: S.Set a }
-    deriving (Show, Read)
+type Sub a = M.Map Weight (S.Set a)
 
-mkSD :: Ord a => [(a, Weight)] -> SubDsc a
-mkSD xs = SubDsc
-    { sdFs = map swap . M.toAscList . fmap S.fromList
-           $ M.fromListWith (++) [(w, [x]) | (x, w) <- xs]
-    , sdTo = S.fromList (map fst xs) }
-  where
-    swap (x, y) = (y, x)
+mkSub :: Ord a => [(a, Weight)] -> Sub a
+mkSub xs = M.fromListWith S.union [(w, S.singleton x) | (x, w) <- xs]
 
-sdGroups :: Ord a => SubDsc a -> [Group a]
-sdGroups dsc =
+unSub :: Ord a => Sub a -> [Group a]
+unSub sub =
     [ Filter (`S.member` charSet) weight
-    | (charSet, weight) <- sdFs dsc ]
+    | (weight, charSet) <- M.toAscList sub ]
 
-sdMember :: Ord a => a -> SubDsc a -> Bool
-sdMember x dsc
-    | x `S.member` sdTo dsc = True
-    | otherwise = False
+-- | Susbtitution map for an alphabet.
+type SubMap a = M.Map a (Sub a)
 
-type SubDscMap a = M.Map a (SubDsc a)
-
-subDscOn :: Ord a => a -> SubDscMap a -> SubDsc a
-subDscOn x sdm = case M.lookup x sdm of
+subOn :: Ord a => a -> SubMap a -> Sub a
+subOn x sm = case M.lookup x sm of
     Just sd -> sd
-    Nothing -> SubDsc [] S.empty
+    Nothing -> M.empty
 
-mkSDM :: Ord a => [(a, a, Weight)] -> SubDscMap a
-mkSDM xs = fmap mkSD $
+mkSubMap :: Ord a => [(a, a, Weight)] -> SubMap a
+mkSubMap xs = fmap mkSub $
     M.fromListWith (++)
         [ (x, [(y, w)])
         | (x, y, w) <- xs ]
@@ -102,5 +86,6 @@ toCost CostDiv{..} =
     del k x   = delete x                                * posMod k
     ins k x   = mini [w | Filter f w <- insert,  f x]   * posMod k
     sub k x y = mini [w | Filter f w <- subst x, f y]   * posMod k
-    mini []   = 0
+    mini []   = inf
     mini xs   = minimum xs
+    inf       = 1 / 0
