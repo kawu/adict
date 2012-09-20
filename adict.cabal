@@ -2,7 +2,7 @@ name:               adict
 version:            0.1.0
 synopsis:           Approximate dictionary searching
 description:
-    TODO
+    Approximate dictionary searching library for Haskell.
 license:            BSD3
 license-file:       LICENSE
 cabal-version:      >= 1.8
