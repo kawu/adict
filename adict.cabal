@@ -6,6 +6,7 @@ description:
 license:            BSD3
 license-file:       LICENSE
 cabal-version:      >= 1.8
+copyright:          Copyright (c) 2012 IPI PAN
 author:             Jakub Waszczuk
 maintainer:         waszczuk.kuba@gmail.com
 stability:          experimental
