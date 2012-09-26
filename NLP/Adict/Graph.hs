@@ -56,7 +56,7 @@ push queue _ [] = queue
 push queue p xs = P.insert (Adj p xs) queue
 
 -- | Find shortes path from a beginning node to any ending node.
-minPath :: (Show n, Show w, Ord n, Ord w, Num w, Fractional w)
+minPath :: (Ord n, Ord w, Num w, Fractional w)
         => w -> Edges n w -> IsEnd n -> n -> Maybe ([n], w)
 minPath threshold edgesFrom isEnd beg =
 
