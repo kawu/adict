@@ -33,12 +33,17 @@ import qualified Data.Map as M
 
 import NLP.Adict.DAWG.Node
 
+-- | A 'Trie' with 'Maybe' values in nodes.
 type TrieD a b = Trie a (Maybe b)
 
-data Trie a b = Trie
-    { valueIn :: b
-    , edgeMap :: M.Map a (Trie a b) }
-    deriving (Show, Eq, Ord)
+-- | A trie of words with character type @a@ and entry type @b@.  It can be
+-- thought of as a map of type @[a] -> b@.
+data Trie a b = Trie {
+    -- | Value in the node.
+    valueIn :: b,                  
+    -- | Edges to subtries annotated with characters.
+    edgeMap :: M.Map a (Trie a b)
+    } deriving (Show, Eq, Ord)
 
 instance Functor (Trie a) where
     fmap f Trie{..} = Trie (f valueIn) (fmap (fmap f) edgeMap)
@@ -106,6 +111,7 @@ follow xs t = foldr (>=>) return (map child xs) t
 lookup :: Ord a => [a] -> TrieD a b -> Maybe b
 lookup xs t = follow xs t >>= valueIn
 
+-- | Construct the 'Trie' from the list of (word, value) pairs.
 fromList :: Ord a => [([a], b)] -> TrieD a b
 fromList xs =
     let update t (x, v) = insert x v t
@@ -123,6 +129,8 @@ toList t = case valueIn t of
 fromLang :: Ord a => [[a]] -> TrieD a ()
 fromLang xs = fromList [(x, ()) | x <- xs]
 
+-- | Elminate common subtries.  The result is algebraically a trie
+-- but is represented as a DAWG in memory.
 implicitDAWG :: (Ord a, Ord b) => Trie a b -> Trie a b
 implicitDAWG = deserialize . serialize
 

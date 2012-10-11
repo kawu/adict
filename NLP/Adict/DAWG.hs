@@ -27,21 +27,23 @@ import qualified Data.Vector as V
 import NLP.Adict.DAWG.Node
 import qualified NLP.Adict.Trie as Trie
 
--- | A DAWGD dictionary is a DAWG which may have 'Nothing' values along the
--- paths from the root to leaves.
+-- | A DAWGD dictionary is a 'DAWG' which may have the 'Nothing' value
+-- along the path from the root to a leave.
 type DAWGD a b = DAWG a (Maybe b)
 
--- | A directed acyclic word graph with character type @a and dictionary
--- entry type @b.
+-- | A directed acyclic word graph with character type @a@ and dictionary
+-- entry type @b@.
 data DAWG a b = DAWG
-    { root  :: Int
-    , array :: V.Vector (Row a b) }
+    { root  :: Int                  -- ^ Root (index) of the DAWG
+    , array :: V.Vector (Row a b)   -- ^ Vector of DAWG nodes
+    }
 
 -- | Find and eliminate all common subtries in the input trie
 -- and return the trie represented as a DAWG.
 fromTrie :: (Ord a, Ord b) => Trie.Trie a b -> DAWG a b
 fromTrie = deserialize . Trie.serialize
 
+-- | Transform the DAWG to implicit DAWG in a form of a trie.
 fromDAWG :: Ord a => DAWG a b -> Trie.Trie a b
 fromDAWG = Trie.deserialize . serialize
 
@@ -53,9 +55,14 @@ row :: DAWG a b -> Int -> Row a b
 row dag k = array dag V.! k
 {-# INLINE row #-}
 
-data Row a b = Row
-    { rowValue :: b
-    , rowEdges :: V.Vector (a, Int) }
+-- | A Row represents one node of the DAWG.
+data Row a b = Row {
+    -- | Value in the node.
+    rowValue :: b, 
+    -- | Edges to subnodes (represented by array indices)
+    -- annotated with characters.
+    rowEdges :: V.Vector (a, Int)
+    }
 
 valueIn :: DAWG a b -> Int -> b
 valueIn dag k = rowValue (array dag V.! k)
