@@ -57,7 +57,7 @@ insert x = P.insert x (proxy x)
 
 -- | Find the shortest path from the beginning node to one
 -- of the ending nodes.
-minPath :: (Show n, Show w, Ord n, Ord w, Num w, Fractional w)
+minPath :: (Ord n, Ord w, Num w, Fractional w)
         => w -> Edges n w -> IsEnd n -> n -> Maybe ([n], w)
 minPath threshold edgesFrom isEnd beg =
 

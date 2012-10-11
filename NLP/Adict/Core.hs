@@ -16,13 +16,13 @@ import qualified Data.Vector as V
 x#i = x V.! (i-1)
 {-# INLINE (#) #-}
 
--- | Word with 'a' character type.
+-- | A word parametrized with character type 'a'.
 type Word a = V.Vector a
 
--- | Position.
+-- | Position in a sentence.
 type Pos = Int
 
--- | Cost of edit operation.  It has to be non-negative!
+-- | Cost of edit operation.  It has to be a non-negative value!
 type Weight = Double
 
 -- | Cost represents a cost (or weight) of a symbol insertion, deletion or
