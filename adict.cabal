@@ -1,5 +1,5 @@
 name:               adict
-version:            0.1.1
+version:            0.2.0
 synopsis:           Approximate dictionary searching
 description:
     Approximate dictionary searching library.
@@ -24,15 +24,18 @@ library
       , binary
 
     exposed-modules:
-        NLP.Adict.Core
+        NLP.Adict
+      , NLP.Adict.Core
       , NLP.Adict.CostDiv
       , NLP.Adict.Dist
       , NLP.Adict.Brute
       , NLP.Adict.Trie
-      , NLP.Adict.DAWG.Node
       , NLP.Adict.DAWG
-      , NLP.Adict.Graph
       , NLP.Adict.Basic
+
+    other-modules:
+        NLP.Adict.Graph
+      , NLP.Adict.DAWG.Node
       , NLP.Adict.Nearest
 
     ghc-options: -Wall -O2

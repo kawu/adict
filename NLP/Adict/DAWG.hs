@@ -3,6 +3,9 @@
 module NLP.Adict.DAWG
 ( DAWGD
 , DAWG (..)
+, fromTrie
+, fromDAWG
+
 , size
 , row
 , Row (..)
@@ -22,12 +25,25 @@ import Data.Binary (Binary, get, put)
 import qualified Data.Vector as V
 
 import NLP.Adict.DAWG.Node
+import qualified NLP.Adict.Trie as Trie
 
+-- | A DAWGD dictionary is a DAWG which may have 'Nothing' values along the
+-- paths from the root to leaves.
 type DAWGD a b = DAWG a (Maybe b)
 
+-- | A directed acyclic word graph with character type @a and dictionary
+-- entry type @b.
 data DAWG a b = DAWG
     { root  :: Int
     , array :: V.Vector (Row a b) }
+
+-- | Find and eliminate all common subtries in the input trie
+-- and return the trie represented as a DAWG.
+fromTrie :: (Ord a, Ord b) => Trie.Trie a b -> DAWG a b
+fromTrie = deserialize . Trie.serialize
+
+fromDAWG :: Ord a => DAWG a b -> Trie.Trie a b
+fromDAWG = Trie.deserialize . serialize
 
 size :: DAWG a b -> Int
 size = V.length . array

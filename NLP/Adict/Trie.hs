@@ -21,7 +21,7 @@ module NLP.Adict.Trie
 
 , serialize
 , deserialize
-, toDAWG
+, implicitDAWG
 ) where
 
 import Prelude hiding (lookup)
@@ -123,9 +123,12 @@ toList t = case valueIn t of
 fromLang :: Ord a => [[a]] -> TrieD a ()
 fromLang xs = fromList [(x, ()) | x <- xs]
 
-toDAWG :: (Ord a, Ord b) => Trie a b -> Trie a b
-toDAWG = deserialize . serialize
+implicitDAWG :: (Ord a, Ord b) => Trie a b -> Trie a b
+implicitDAWG = deserialize . serialize
 
+-- | Serialize the trie and eliminate all common subtries
+-- along the way.  TODO: perhaps the function name should
+-- be different?
 serialize :: (Ord a, Ord b) => Trie a b -> [Node a b]
 serialize r =
     [ mkNode (valueIn t)
@@ -137,7 +140,7 @@ serialize r =
     m' = M.fromList [(y, x) | (x, y) <- M.toList m]
 
 -- | FIXME: Null node list case.
-deserialize :: (Ord a, Ord b) => [Node a b] -> Trie a b
+deserialize :: Ord a => [Node a b] -> Trie a b
 deserialize =
     snd . M.findMax . foldl' update M.empty
   where
