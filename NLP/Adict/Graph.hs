@@ -7,8 +7,7 @@ module NLP.Adict.Graph
 , IsEnd
 ) where
 
-import Data.Function (on)
-import qualified Data.PQueue.Min as P
+import qualified Data.PSQueue as P
 import qualified Data.Map as M
 
 -- | Adjacent list for a given node @n. We assume, that the list
@@ -19,53 +18,55 @@ type Edge n w  = (n, w, n)
 -- | Is @n node an ending node?
 type IsEnd n = n -> Bool
 
--- | Non-empty list of adjacent nodes given in ascending order.
--- We use new data type to implement custom Eq and Ord instances.
+-- | Non-empty list of adjacent nodes given in an ascending order.
 data Adj n w = Adj
     { from :: n
     , to   :: [(w, n)] }
-    deriving Show
+    deriving (Show, Eq, Ord)
 
+-- | First element from the the adjacent list, which is also
+-- a priority in the priority queue.
 proxy :: Adj n w -> (w, n)
 proxy = head . to
 {-# INLINE proxy #-}
 
+-- | Tail elements from the adjacent list.
 folls :: Adj n w -> [(w, n)]
 folls = tail . to
 {-# INLINE folls #-}
 
-instance (Eq n, Eq w) => Eq (Adj n w) where
-    (==) = (==) `on` proxy
-
-instance (Ord n, Ord w) => Ord (Adj n w) where
-    compare = compare `on` proxy
+-- | Priority queue.
+type PQ n w = P.PSQ (Adj n w) (w, n)
 
 -- | Remove minimal edge (from, weight, to) from the queue.
-minView :: (Ord n, Ord w) => P.MinQueue (Adj n w)
-        -> Maybe (Edge n w, P.MinQueue (Adj n w))
+minView :: (Ord n, Ord w) => PQ n w -> Maybe (Edge n w, PQ n w)
 minView queue = do
-    (adj, queue') <- P.minView queue
+    (adj P.:-> (w, q), queue') <- P.minView queue
     let p       = from adj
-        (w, q)  = proxy adj
         e       = (p, w, q)
     return (e, push queue' p (folls adj))
 
-push :: (Ord n, Ord w) => P.MinQueue (Adj n w) -> n
-     -> [(w, n)] -> P.MinQueue (Adj n w)
+push :: (Ord n, Ord w) => PQ n w -> n -> [(w, n)] -> PQ n w
 push queue _ [] = queue
-push queue p xs = P.insert (Adj p xs) queue
+push queue p xs = insert (Adj p xs) queue
+{-# INLINE push #-}
 
--- | Find shortes path from a beginning node to any ending node.
+insert :: (Ord n, Ord w) => Adj n w -> PQ n w -> PQ n w
+insert x = P.insert x (proxy x)
+{-# INLINE insert #-}
+
+-- | Find the shortest path from the beginning node to one
+-- of the ending nodes.
 minPath :: (Show n, Show w, Ord n, Ord w, Num w, Fractional w)
         => w -> Edges n w -> IsEnd n -> n -> Maybe ([n], w)
 minPath threshold edgesFrom isEnd beg =
 
-    shortest M.empty $ P.singleton (Adj beg [(0, beg)])
+    shortest M.empty $ insert (Adj beg [(0, beg)]) P.empty
 
   where
 
-    -- | @visited -- set of visited nodes.
-    --   @queue -- priority queue,
+    -- @visited: set of visited nodes
+    -- @queue: priority queue
     shortest visited queue = do
         (edge, queue') <- minView queue
         shortest' visited queue' edge
