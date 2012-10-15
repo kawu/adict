@@ -1,4 +1,4 @@
--- | This module exports main data types and functions of the adict library.
+-- | This module re-exports main data types and functions from the adict library.
 
 module NLP.Adict
 (
@@ -17,10 +17,30 @@ module NLP.Adict
 , DAWGD
 , fromTrie
 , fromDAWG
+
+-- * Approximate searching 
+-- $searching
+
+-- ** Cost function 
+, Word
+, Pos
+, Weight
+, Cost (..)
+, costDefault
+
+-- ** Searching methods
+, bruteSearch
+, findAll
+, findNearest
 ) where
 
-import NLP.Adict.Trie (Trie (..), TrieD, fromList, implicitDAWG)
+import NLP.Adict.Core (Word, Pos, Weight, costDefault, Cost (..))
+import NLP.Adict.Trie (Trie (..), TrieD, fromList)
+import NLP.Adict.Trie.Serialize (implicitDAWG)
 import NLP.Adict.DAWG (DAWG (..), Row (..), DAWGD, fromTrie, fromDAWG)
+import NLP.Adict.Brute (bruteSearch)
+import NLP.Adict.Basic (findAll)
+import NLP.Adict.Nearest (findNearest)
 
 {- $data-structures
 
@@ -42,20 +62,29 @@ import NLP.Adict.DAWG (DAWG (..), Row (..), DAWGD, fromTrie, fromDAWG)
 
 -}
 
---   2. Approximate search and cost representation
---    * Plain cost function
---    * Cost components divided with respect to weight
--- 
---   There are to ways of representing the cost function, depending on
---   the searching algorithm you are planning to use.  If you want to
---   find all matches within the given distance of the query word,
---   use the 'findAll' function with cost function represented by the
---   'Cost' structure.
--- 
---   If, however, only the nearest match is needed you can use the
---   'findNearest' function. The shortest-path-search algorithm in the
---   background is optimized to use the more find-grained, 'CostDiv'
---   structure for cost representation. See the '...' module for the
---   details about how such a cost function can be constructed.
--- 
--- -}
+{- $searching
+
+  There are three approximate searching methods implemented in
+  the library.  The first one, 'findAll', can be used to find
+  all matches within the given distance from the query word.
+  The 'findNearest' function, on the other hand, searches only
+  for the nearest to the query word match.  
+  The third one, 'bruteSearch', is provided only for reference
+  and testing purposes.
+
+  The 'findAll' function is evaluated against the 'Trie' while the
+  'findNearest' one is evaluated against the 'DAWG'.
+  The reason to make this distinction is that the 'findNearest'
+  function needs to distinguish between DAG nodes and to know
+  when the particular node is visited for the second time.
+
+  Both methods perform the search with respect to the cost function
+  specified by the library user, which can be used to customize
+  weights of edit operations.  The 'Cost' structure provides the
+  general representation of the cost and it can be used with
+  the 'findAll' method.   The shortest-path algorithm used in
+  the background of the 'findNearest' function is optimized to 
+  use the more informative, 'CostDiv' cost representation,
+  which divides edit operations between separate classes with
+  respect to their weight.
+-}

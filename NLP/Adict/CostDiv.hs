@@ -1,11 +1,16 @@
 {-# LANGUAGE RecordWildCards #-}
 
+-- | Alternative cost representation with individul cost components
+-- divided into groups with respect to operation weights.  
+
 module NLP.Adict.CostDiv
-( Group (..)
+(
+-- * CostDiv
+  Group (..)
 , CostDiv (..)
-, mapWeight
 , costDefault
 
+-- * Helper functions for CostDiv construction 
 , Sub
 , mkSub
 , unSub
@@ -13,6 +18,7 @@ module NLP.Adict.CostDiv
 , subOn
 , mkSubMap
 
+-- * Conversion to standard representation
 , toCost
 , toCostInf
 ) where
@@ -22,15 +28,15 @@ import qualified Data.Map as M
 
 import NLP.Adict.Core (Pos, Cost(..), Weight)
 
--- | TODO: Add Choice data contructor together with appropriate
--- implementation: Choice Char Weight
+
+-- | A Group describes a weight of some edit operation in which a character
+-- satistying the predicate is involved.  This data structure is meant to
+-- collect all characters which determine the specified operation weight.
+-- TODO: Add Choice data contructor.
 data Group a = Filter
     { predic :: a -> Bool
     , weight :: Weight }
 
-mapWeight :: (Weight -> Weight) -> Group a -> Group a
-mapWeight f g = g { weight = f (weight g) }
-           
 -- | Cost function with edit operations divided with respect to weight.
 -- Two operations with the same cost should be assigned to the same group.
 data CostDiv a = CostDiv
@@ -39,6 +45,7 @@ data CostDiv a = CostDiv
     , subst  :: a   -> [Group a]
     , posMod :: Pos -> Weight }
 
+-- | Default cost with all edit operations having the unit weight.
 costDefault :: Eq a => CostDiv a
 costDefault =
     CostDiv insert delete subst posMod
@@ -55,32 +62,43 @@ costDefault =
 {-# INLINABLE costDefault #-}
 {-# SPECIALIZE costDefault :: CostDiv Char #-}
 
--- | Substition desription for some character x.
+-- | Substition desription for some indeterminate character.
 type Sub a = M.Map Weight (S.Set a)
 
+-- | Construct the substitution descrition from the list of (character @y@,
+-- substition weight from @x@ to @y@) pairs for some unspecified character
+-- @x@.  Characters will be grouped with respect to weight.
 mkSub :: Ord a => [(a, Weight)] -> Sub a
 mkSub xs = M.fromListWith S.union [(w, S.singleton x) | (x, w) <- xs]
 
+-- | Extract the list of groups (each group with unique weight) fro the
+-- substitution description.
 unSub :: Ord a => Sub a -> [Group a]
 unSub sub =
     [ Filter (`S.member` charSet) weight
     | (weight, charSet) <- M.toAscList sub ]
 
--- | Susbtitution map for an alphabet.
+-- | A susbtitution map which covers all substition operations.
 type SubMap a = M.Map a (Sub a)
 
+-- | Substitution description for the given character in the substitution map.
+-- In other words, the function returns information how the input character can
+-- be replaced with other characters from the alphabet.
 subOn :: Ord a => a -> SubMap a -> Sub a
 subOn x sm = case M.lookup x sm of
     Just sd -> sd
     Nothing -> M.empty
 
+-- | Construct the substitution map from the list of (@x@, @y@, weight of
+-- @x -> y@ substitution) tuples.
 mkSubMap :: Ord a => [(a, a, Weight)] -> SubMap a
 mkSubMap xs = fmap mkSub $
     M.fromListWith (++)
         [ (x, [(y, w)])
         | (x, y, w) <- xs ]
 
--- | Transform CostDiv to plain Cost function with default weight value.
+-- | Transform CostDiv to plain Cost function using the default weight value
+-- for all operations unspecified in the input cost.
 toCost :: Double -> CostDiv a -> Cost a
 toCost defa CostDiv{..} =
     Cost ins del sub
@@ -92,7 +110,7 @@ toCost defa CostDiv{..} =
     mini xs   = minimum xs
 
 -- | Transform CostDiv to plain Cost function with default weight value
--- set to +Infinity.
+-- set to @+Infinity@.
 toCostInf :: CostDiv a -> Cost a
 toCostInf =
     let inf = 1 / 0

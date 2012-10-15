@@ -10,12 +10,12 @@ module NLP.Adict.Graph
 import qualified Data.PSQueue as P
 import qualified Data.Map as M
 
--- | Adjacent list for a given node @n. We assume, that the list
+-- | Adjacent list for a given node @n@. We assume, that the list
 -- is given in an ascending order.
 type Edges n w = n -> [(w, n)]
 type Edge n w  = (n, w, n)
 
--- | Is @n node an ending node?
+-- | Is @n@ node an ending node?
 type IsEnd n = n -> Bool
 
 -- | Non-empty list of adjacent nodes given in an ascending order.
@@ -65,8 +65,8 @@ minPath threshold edgesFrom isEnd beg =
 
   where
 
-    -- @visited: set of visited nodes
-    -- @queue: priority queue
+    -- @visited@: set of visited nodes
+    -- @queue@: priority queue
     shortest visited queue = do
         (edge, queue') <- minView queue
         shortest' visited queue' edge

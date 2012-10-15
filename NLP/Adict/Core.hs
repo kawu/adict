@@ -33,7 +33,7 @@ data Cost a = Cost
     , delete :: Pos -> a -> Weight
     , subst  :: Pos -> a -> a -> Weight }
 
--- | Simple cost function: all edit operations cost 1.
+-- | Simple cost function: all edit operations cost 1 unit.
 costDefault :: Eq a => Cost a
 costDefault =
     Cost _insert _delete _subst

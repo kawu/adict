@@ -1,5 +1,5 @@
 module NLP.Adict.Nearest
-( search
+( findNearest
 ) where
 
 import Control.Applicative ((<$>))
@@ -43,10 +43,14 @@ weightOf (Ins g) = weight g
 weightOf (Sub g) = weight g
 {-# INLINE weightOf #-}
 
+mapWeight :: (Weight -> Weight) -> Group a -> Group a
+mapWeight f g = g { weight = f (weight g) }
+
 -- | We can check, if CostDiv satisfies basic properties.  On the other
 -- hand, we do not do this for plain Cost function.
-search :: CostDiv a -> Double -> Word a -> DAWGD a b -> Maybe ([a], b, Double)
-search cost z x dag = do
+findNearest :: CostDiv a -> Double -> Word a
+            -> DAWGD a b -> Maybe ([a], b, Double)
+findNearest cost z x dag = do
     (xs, w) <- minPath z edgesFrom isEnd (Node (root dag) 0 Nothing)
     let form = catMaybes . map nodeChar $ xs
     r <- valueIn dag $ nodeID $ last xs

@@ -1,5 +1,5 @@
 module NLP.Adict.Brute
-( search
+( bruteSearch
 ) where
 
 import Data.Maybe (mapMaybe)
@@ -9,8 +9,9 @@ import NLP.Adict.Dist
 
 -- | Find all words within a list with restricted generalized edit distance
 -- from x lower or equall to k.
-search :: Cost a -> Double -> Word a -> [(Word a, b)] -> [(Word a, b, Double)]
-search cost k x =
+bruteSearch :: Cost a -> Double -> Word a
+            -> [(Word a, b)] -> [(Word a, b, Double)]
+bruteSearch cost k x =
     mapMaybe check
   where
     check (y, v)

@@ -1,5 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
+-- | A directed acyclic word graph.
+
 module NLP.Adict.DAWG
 ( DAWGD
 , DAWG (..)
@@ -14,9 +16,6 @@ module NLP.Adict.DAWG
 , valueIn
 , edges
 , edgeOn
-
-, serialize
-, deserialize
 ) where
 
 import Control.Applicative ((<$>))
@@ -24,15 +23,17 @@ import Data.Maybe (listToMaybe)
 import Data.Binary (Binary, get, put)
 import qualified Data.Vector as V
 
-import NLP.Adict.DAWG.Node
+import NLP.Adict.Node
 import qualified NLP.Adict.Trie as Trie
+import qualified NLP.Adict.Trie.Serialize as Trie
 
 -- | A DAWGD dictionary is a 'DAWG' which may have the 'Nothing' value
--- along the path from the root to a leave.
+-- along the path from the root to a leaf.
 type DAWGD a b = DAWG a (Maybe b)
 
 -- | A directed acyclic word graph with character type @a@ and dictionary
--- entry type @b@.
+-- entry type @b@.  Each node is represented by a unique integer number
+-- which is also an index of the node in the DAWG array.
 data DAWG a b = DAWG
     { root  :: Int                  -- ^ Root (index) of the DAWG
     , array :: V.Vector (Row a b)   -- ^ Vector of DAWG nodes
@@ -47,10 +48,12 @@ fromTrie = deserialize . Trie.serialize
 fromDAWG :: Ord a => DAWG a b -> Trie.Trie a b
 fromDAWG = Trie.deserialize . serialize
 
+-- | Size of the DAWG.
 size :: DAWG a b -> Int
 size = V.length . array
 {-# INLINE size #-}
 
+-- | Row (node) of the DAWG on the given array position.
 row :: DAWG a b -> Int -> Row a b
 row dag k = array dag V.! k
 {-# INLINE row #-}
@@ -59,24 +62,30 @@ row dag k = array dag V.! k
 data Row a b = Row {
     -- | Value in the node.
     rowValue :: b, 
-    -- | Edges to subnodes (represented by array indices)
+    -- | Edges to subnodes (represented by DAWG array indices)
     -- annotated with characters.
     rowEdges :: V.Vector (a, Int)
     }
 
+-- | Value in the DAWG node represented by the index.
 valueIn :: DAWG a b -> Int -> b
 valueIn dag k = rowValue (array dag V.! k)
 {-# INLINE valueIn #-}
 
+-- | Edges starting from the DAWG node represented by the index.
 edges :: DAWG a b -> Int -> [(a, Int)]
 edges dag k = V.toList . rowEdges $ row dag k
 {-# INLINE edges #-}
 
+-- | Index of the node following the edge annotated with the
+-- given character.
 edgeOn :: Eq a => DAWG a b -> Int -> a -> Maybe Int
 edgeOn DAWG{..} k x =
     let r = array V.! k
     in  snd <$> V.find ((x==).fst) (rowEdges r)
 
+-- | Return the dictionary entry determined by following the
+-- path of node indices.
 entry :: DAWG a (Maybe b) -> [Int] -> Maybe ([a], b)
 entry dag xs = do
     x <- mapM (charOn dag) (zip (root dag:xs) xs)
@@ -86,14 +95,17 @@ entry dag xs = do
     maybeLast [] = Nothing
     maybeLast ys = Just $ last ys
 
+-- | Determine the character on the edges between two nodes.
 charOn :: DAWG a b -> (Int, Int) -> Maybe a
 charOn dag (root, x) = listToMaybe
     [c | (c, y) <- edges dag root, x == y]
 
+-- | Serialize the DAWG into a list of nodes.
 serialize :: Ord a => DAWG a b -> [Node a b]
 serialize = map unRow . V.toList . array
 
--- | Assumptiom: root node is last in the serialization list.
+-- | Deserialize the DAWG from a list of nodes.  Assumptiom: root node
+-- is last in the serialization list.
 deserialize :: Ord a => [Node a b] -> DAWG a b
 deserialize xs =
     let arr = V.fromList $ map mkRow xs
@@ -110,16 +122,3 @@ mkRow n = Row (nodeValue n) (V.fromList $ nodeEdges n)
 instance (Ord a, Binary a, Binary b) => Binary (DAWG a b) where
     put = put . serialize
     get = deserialize <$> get
-
--- goDown :: DAWG a -> Int -> DAWG a
--- goDown DAWG{..} k = DAWG k array
--- 
--- instance T.Trie DAWGArray where
---     unTrie dag@DAWGArray{..} =
---         let row = array V.! root
---         in  ( valueIn row
---             , [ (c, goDown dag k)
---               | (c, k) <- U.toList (edgeVec row) ] )
---     child x dag@DAWGArray{..} =
---         let row = array V.! root
---         in  goDown dag <$> snd <$> U.find ((x==).fst) (edgeVec row)

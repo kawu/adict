@@ -1,6 +1,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module NLP.Adict.DAWG.Node
+-- | A graph node data type.
+
+module NLP.Adict.Node
 ( Node
 , mkNode
 , nodeValue

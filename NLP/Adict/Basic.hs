@@ -1,5 +1,5 @@
 module NLP.Adict.Basic
-( search
+( findAll
 ) where
 
 import Data.Ix (range)
@@ -11,8 +11,8 @@ import NLP.Adict.Trie hiding (insert)
 
 -- | Find all words within a trie with restricted generalized edit distance
 -- lower or equall to k.
-search :: Cost a -> Double -> Word a -> TrieD a b -> [([a], b, Double)]
-search cost k x trie =
+findAll :: Cost a -> Double -> Word a -> TrieD a b -> [([a], b, Double)]
+findAll cost k x trie =
     foundHere ++ foundLower
   where
     foundHere
@@ -23,7 +23,7 @@ search cost k x trie =
     foundLower
         | minimum (A.elems distV) > k = []
         | otherwise = concatMap searchLower $ anyChild trie
-    searchLower = search' cost k dist' x
+    searchLower = search cost k dist' x
 
     dist' = (A.!) distV 
     distV = A.array bounds [(i, dist i) | i <- range bounds]
@@ -33,9 +33,9 @@ search cost k x trie =
     dist 0 = 0
     dist i = dist' (i-1) + (delete cost) i (x#i)
 
-search' :: Cost a -> Double -> (Int -> Double)
-        -> Word a -> (a, TrieD a b) -> [([a], b, Double)]
-search' cost k distP x (c, trie) =
+search :: Cost a -> Double -> (Int -> Double)
+       -> Word a -> (a, TrieD a b) -> [([a], b, Double)]
+search cost k distP x (c, trie) =
     foundHere ++ map appendChar foundLower
   where
     foundHere
@@ -46,7 +46,7 @@ search' cost k distP x (c, trie) =
     foundLower
         | minimum (A.elems distV) > k = []
         | otherwise = concatMap searchLower $ anyChild trie
-    searchLower = search' cost k dist' x
+    searchLower = search cost k dist' x
     appendChar (cs, y, w) = ((c:cs), y, w)
 
     dist' = (A.!) distV 
