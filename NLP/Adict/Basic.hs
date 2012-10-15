@@ -7,16 +7,16 @@ import qualified Data.Array as A
 import qualified Data.Vector as V
 
 import NLP.Adict.Core
-import NLP.Adict.Trie hiding (insert)
+import NLP.Adict.Trie.Internal hiding (insert)
 
 -- | Find all words within a trie with restricted generalized edit distance
 -- lower or equall to k.
-findAll :: Cost a -> Double -> Word a -> TrieD a b -> [([a], b, Double)]
+findAll :: Cost a -> Double -> Word a -> TrieM a b -> [([a], b, Double)]
 findAll cost k x trie =
     foundHere ++ foundLower
   where
     foundHere
-        | dist' m <= k = case valueIn trie of
+        | dist' m <= k = case rootValue trie of
             Just y  -> [([], y, dist' m)]
             Nothing -> []
         | otherwise = []
@@ -34,12 +34,12 @@ findAll cost k x trie =
     dist i = dist' (i-1) + (delete cost) i (x#i)
 
 search :: Cost a -> Double -> (Int -> Double)
-       -> Word a -> (a, TrieD a b) -> [([a], b, Double)]
+       -> Word a -> (a, TrieM a b) -> [([a], b, Double)]
 search cost k distP x (c, trie) =
     foundHere ++ map appendChar foundLower
   where
     foundHere
-        | dist' m <= k = case valueIn trie of
+        | dist' m <= k = case rootValue trie of
             Just y  -> [([c], y, dist' m)]
             Nothing -> []
         | otherwise = []

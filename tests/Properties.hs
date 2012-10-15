@@ -12,11 +12,8 @@ import Test.QuickCheck
 import Test.Framework (Test, defaultMain)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 
-import NLP.Adict.Core
+import NLP.Adict
 import qualified NLP.Adict.CostDiv as C
-import qualified NLP.Adict.Brute as Br
-import qualified NLP.Adict.Basic as Ba
-import qualified NLP.Adict.Nearest as Nr
 import qualified NLP.Adict.Trie as Trie
 import qualified NLP.Adict.DAWG as DAWG
 
@@ -137,8 +134,8 @@ instance Arbitrary Lang where
 -- be the same no matter which searching function is used.
 pBaseEqBrute :: CostDesc -> Positive Double -> String -> Lang -> Bool
 pBaseEqBrute costDesc kP xR lang =
-    let br = (nub . map unWord) (Br.search cost k x ys)
-        ba = nub (Ba.search cost k x trie)
+    let br = (nub . map unWord) (bruteSearch cost k x ys)
+        ba = nub (findAll cost k x trie)
     in  br == ba
   where
     x = V.fromList xR
@@ -150,8 +147,8 @@ pBaseEqBrute costDesc kP xR lang =
 
 pBaseEqNearest :: CostDivDesc -> Positive Double -> String -> Lang -> Bool
 pBaseEqNearest costDesc kP xR lang =
-    let ba = Ba.search cost k x trie
-        nr = Nr.search costDiv k x dawg
+    let ba = findAll cost k x trie
+        nr = findNearest costDiv k x dawg
     in  check ba nr
   where
     check [] (Just _) = False
@@ -169,7 +166,7 @@ pBaseEqNearest costDesc kP xR lang =
     cost = C.toCostInf costDiv
 
     trie = Trie.fromLang (getWords lang)
-    dawg = DAWG.deserialize . Trie.serialize $ trie
+    dawg = DAWG.fromTrie trie
 
 nub :: Ord a => [a] -> [a]
 nub = S.toList . S.fromList

@@ -7,14 +7,14 @@ module NLP.Adict
 
 -- ** Trie
   Trie (..)
-, TrieD
+, TrieM
 , fromList
 , implicitDAWG
 
 -- ** Directed acyclic word graph
 , DAWG (..)
-, Row (..)
-, DAWGD
+, Node (..)
+, DAWGM
 , fromTrie
 , fromDAWG
 
@@ -35,9 +35,8 @@ module NLP.Adict
 ) where
 
 import NLP.Adict.Core (Word, Pos, Weight, costDefault, Cost (..))
-import NLP.Adict.Trie (Trie (..), TrieD, fromList)
-import NLP.Adict.Trie.Serialize (implicitDAWG)
-import NLP.Adict.DAWG (DAWG (..), Row (..), DAWGD, fromTrie, fromDAWG)
+import NLP.Adict.Trie (Trie (..), TrieM, fromList, implicitDAWG)
+import NLP.Adict.DAWG (DAWG (..), Node (..), DAWGM, fromTrie, fromDAWG)
 import NLP.Adict.Brute (bruteSearch)
 import NLP.Adict.Basic (findAll)
 import NLP.Adict.Nearest (findNearest)

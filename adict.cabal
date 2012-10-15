@@ -37,7 +37,8 @@ library
       , NLP.Adict.Graph
       , NLP.Adict.Nearest
       , NLP.Adict.Node
-      , NLP.Adict.Trie.Serialize
+      , NLP.Adict.Trie.Internal
+      , NLP.Adict.DAWG.Internal
 
     ghc-options: -Wall -O2
 

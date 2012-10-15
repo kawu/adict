@@ -12,7 +12,7 @@ import qualified Data.Vector as V
 
 import NLP.Adict.Core (Pos, Weight, Word, (#))
 import NLP.Adict.CostDiv
-import NLP.Adict.DAWG
+import NLP.Adict.DAWG.Internal hiding (Node)
 import NLP.Adict.Graph
 
 type NodeID  = Int
@@ -49,11 +49,11 @@ mapWeight f g = g { weight = f (weight g) }
 -- | We can check, if CostDiv satisfies basic properties.  On the other
 -- hand, we do not do this for plain Cost function.
 findNearest :: CostDiv a -> Double -> Word a
-            -> DAWGD a b -> Maybe ([a], b, Double)
+            -> DAWGM a b -> Maybe ([a], b, Double)
 findNearest cost z x dag = do
     (xs, w) <- minPath z edgesFrom isEnd (Node (root dag) 0 Nothing)
     let form = catMaybes . map nodeChar $ xs
-    r <- valueIn dag $ nodeID $ last xs
+    r <- valueBy dag $ nodeID $ last xs
     return (form, r, w)
   where
     edgesFrom (Node n i _) =
@@ -83,4 +83,4 @@ findNearest cost z x dag = do
             | (c, m) <- edges dag n
             , f c ]
 
-    isEnd (Node n k _) = k == V.length x && isJust (valueIn dag n)
+    isEnd (Node n k _) = k == V.length x && isJust (valueBy dag n)

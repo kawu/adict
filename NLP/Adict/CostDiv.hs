@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
--- | Alternative cost representation with individul cost components
+-- | Alternative cost representation with individual cost components
 -- divided into groups with respect to operation weights.  
 
 module NLP.Adict.CostDiv
@@ -29,21 +29,34 @@ import qualified Data.Map as M
 import NLP.Adict.Core (Pos, Cost(..), Weight)
 
 
+-- TODO: Add Choice data contructor.
+
 -- | A Group describes a weight of some edit operation in which a character
 -- satistying the predicate is involved.  This data structure is meant to
--- collect all characters which determine the specified operation weight.
--- TODO: Add Choice data contructor.
-data Group a = Filter
-    { predic :: a -> Bool
-    , weight :: Weight }
+-- collect all characters which determine the same operation weight.
+data Group a = Filter {
+    -- | The predicate determines which characters belong to the group.
+    predic :: a -> Bool,
+    -- | Weight of the edit operation in which a character satisfying the
+    -- predicate is involved.
+    weight :: Weight  }
 
 -- | Cost function with edit operations divided with respect to weight.
--- Two operations with the same cost should be assigned to the same group.
-data CostDiv a = CostDiv
-    { insert ::        [Group a]
-    , delete :: a   -> Weight
-    , subst  :: a   -> [Group a]
-    , posMod :: Pos -> Weight }
+-- Two operations of the same type and with the same weight should be
+-- assigned to the same group.
+data CostDiv a = CostDiv {
+    -- | Cost of the character insertion divided into groups with
+    -- respect to operation weights.
+    insert ::        [Group a],
+    -- | Cost of the character deletion.
+    delete :: a   -> Weight,
+    -- | Cost of the character substitution.  For each source character
+    -- there can be a different list of groups involved. 
+    subst  :: a   -> [Group a],
+    -- | Cost of each edit operation is multiplied by the position modifier.
+    -- For example, the cost of @\'a\'@ character deletion on position @3@
+    -- is computed as @delete \'a\' * posMod 3@.
+    posMod :: Pos -> Weight }
 
 -- | Default cost with all edit operations having the unit weight.
 costDefault :: Eq a => CostDiv a
@@ -62,7 +75,7 @@ costDefault =
 {-# INLINABLE costDefault #-}
 {-# SPECIALIZE costDefault :: CostDiv Char #-}
 
--- | Substition desription for some indeterminate character.
+-- | Substition description for some unspecified source character.
 type Sub a = M.Map Weight (S.Set a)
 
 -- | Construct the substitution descrition from the list of (character @y@,
@@ -71,7 +84,7 @@ type Sub a = M.Map Weight (S.Set a)
 mkSub :: Ord a => [(a, Weight)] -> Sub a
 mkSub xs = M.fromListWith S.union [(w, S.singleton x) | (x, w) <- xs]
 
--- | Extract the list of groups (each group with unique weight) fro the
+-- | Extract the list of groups (each group with unique weight) from the
 -- substitution description.
 unSub :: Ord a => Sub a -> [Group a]
 unSub sub =
