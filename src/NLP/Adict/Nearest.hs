@@ -4,25 +4,26 @@ module NLP.Adict.Nearest
 
 import Control.Applicative ((<$>))
 import Control.Monad (guard)
-import Data.Maybe (isJust, catMaybes)
+import Data.Maybe (isJust, catMaybes, maybeToList)
 import Data.List (sortBy)
 import Data.Ord (comparing)
 import Data.Function (on)
 import qualified Data.Vector as V
+import           Data.Vector.Unboxed (Unbox)
 
-import NLP.Adict.Core (Pos, Weight, Word, (#))
-import NLP.Adict.CostDiv
-import NLP.Adict.DAWG.Internal hiding (Node)
-import NLP.Adict.Graph
+import           NLP.Adict.Core (Pos, Weight, Word, (#))
+import           NLP.Adict.CostDiv
+import           NLP.Adict.Graph
+import qualified Data.DAWG.Static as D
+import           Data.DAWG.Static (DAWG, ID)
 
-type NodeID  = Int
 data Node a = Node
-    { nodeID   :: {-# UNPACK #-} !NodeID
+    { nodeID   :: {-# UNPACK #-} !ID
     , nodePos  :: {-# UNPACK #-} !Pos
     , nodeChar :: !(Maybe a) }
     deriving (Show)
 
-proxy :: Node a -> (NodeID, Pos)
+proxy :: Node a -> (ID, Pos)
 proxy n = (nodeID n, nodePos n)
 {-# INLINE proxy #-}
 
@@ -46,17 +47,23 @@ weightOf (Sub g) = weight g
 mapWeight :: (Weight -> Weight) -> Group a -> Group a
 mapWeight f g = g { weight = f (weight g) }
 
--- | We can check, if CostDiv satisfies basic properties.  On the other
+-- | We could check, if CostDiv satisfies basic properties.  On the other
 -- hand, we do not do this for plain Cost function.
-findNearest :: CostDiv a -> Double -> Word a
-            -> DAWGM a b -> Maybe ([a], b, Double)
+findNearest
+    :: (Enum a, Unbox w)
+    => CostDiv a            -- ^ Cost function
+    -> Double               -- ^ Threshold
+    -> Word a               -- ^ Query word
+    -> DAWG a w b
+    -> Maybe ([a], b, Double)
 findNearest cost z x dag = do
-    (xs, w) <- minPath z edgesFrom isEnd (Node (root dag) 0 Nothing)
+    (xs, w) <- minPath z edgesFrom isEnd (Node (D.rootID dag) 0 Nothing)
     let form = catMaybes . map nodeChar $ xs
+    -- TODO: is the assumption, that (length xs > 0), satisfied?
     r <- valueBy dag $ nodeID $ last xs
     return (form, r, w)
   where
-    edgesFrom (Node n i _) =
+    edgesFrom (Node ni i _) =
         concatMap follow $ sortBy (comparing weightOf) groups
       where
         j = i+1
@@ -72,15 +79,21 @@ findNearest cost z x dag = do
             subst cost (x#j)
 
         follow (Ins (Filter f w)) =
-            [ (w, Node m i (Just c))
-            | (c, m) <- edges dag n
-            , f c ]
+            [ (w, Node (D.rootID m) i (Just c))
+            | dawg'  <- maybeToList (D.byID ni dag)
+            , (c, m) <- D.edges dawg', f c ]
 
-        follow (Del w) = [(w, Node n j Nothing)]
+        follow (Del w) = [(w, Node ni j Nothing)]
 
         follow (Sub (Filter f w)) =
-            [ (w, Node m j (Just c))
-            | (c, m) <- edges dag n
-            , f c ]
+            [ (w, Node (D.rootID m) j (Just c))
+            | dawg'  <- maybeToList (D.byID ni dag)
+            , (c, m) <- D.edges dawg', f c ]
 
-    isEnd (Node n k _) = k == V.length x && isJust (valueBy dag n)
+    isEnd (Node ni k _) = k == V.length x && isJust (valueBy dag ni)
+
+-- | Get value of a node at the given ID.
+valueBy :: (Enum a, Unbox w) => DAWG a w b -> ID -> Maybe b
+valueBy dawg i = do
+    dawg' <- D.byID i dawg
+    D.lookup [] dawg'

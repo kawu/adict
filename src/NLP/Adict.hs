@@ -2,27 +2,11 @@
 
 module NLP.Adict
 (
--- * Dictionary representation
--- $data-structures
-
--- ** Trie
-  Trie (..)
-, TrieM
-, fromList
-, implicitDAWG
-
--- ** Directed acyclic word graph
-, DAWG (..)
-, Node (..)
-, DAWGM
-, fromTrie
-, fromDAWG
-
 -- * Approximate searching 
 -- $searching
 
 -- ** Cost function 
-, Word
+  Word
 , Pos
 , Weight
 , Cost (..)
@@ -35,31 +19,9 @@ module NLP.Adict
 ) where
 
 import NLP.Adict.Core (Word, Pos, Weight, costDefault, Cost (..))
-import NLP.Adict.Trie (Trie (..), TrieM, fromList, implicitDAWG)
-import NLP.Adict.DAWG (DAWG (..), Node (..), DAWGM, fromTrie, fromDAWG)
 import NLP.Adict.Brute (bruteSearch)
 import NLP.Adict.Basic (findAll)
 import NLP.Adict.Nearest (findNearest)
-
-{- $data-structures
-
-  The library provides two basic data structures used for dictionary
-  representation. The first one is a 'Trie', which can be constructed 
-  from a list of dictionary entries by using the 'fromList' function.
-
-  The trie can be translated into a directed acyclic word graph ('DAWG')
-  using the 'fromTrie' function (for the moment it is done in an
-  inefficient manner, though). 
-
-  There is also a possibility of constructing an implicit DAWG, i.e. a DAWG
-  which is algebraically represented by a trie with sharing of common subtries,
-  by using the 'implicitDAWG' function (which is also inefficient right now;
-  in fact, the 'fromTrie' function uses this one underneath).
-
-  Finally, the DAWG can be transformed back to a trie (implicit DAWG) using
-  the 'fromDAWG' function.
-
--}
 
 {- $searching
 

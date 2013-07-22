@@ -14,8 +14,7 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 
 import NLP.Adict
 import qualified NLP.Adict.CostDiv as C
-import qualified NLP.Adict.Trie as Trie
-import qualified NLP.Adict.DAWG as DAWG
+import qualified Data.DAWG.Static as DAWG
 
 -- | Check parameters.
 posRange :: (Int, Int)
@@ -135,19 +134,19 @@ instance Arbitrary Lang where
 pBaseEqBrute :: CostDesc -> Positive Double -> String -> Lang -> Bool
 pBaseEqBrute costDesc kP xR lang =
     let br = (nub . map unWord) (bruteSearch cost k x ys)
-        ba = nub (findAll cost k x trie)
+        ba = nub (findAll cost k x dawg)
     in  br == ba
   where
     x = V.fromList xR
     cost = toCost costDesc
     k = getPositive kP
-    trie = Trie.fromLang (getWords lang)
+    dawg = DAWG.fromLang (getWords lang)
     ys = [(V.fromList y, ()) | y <- getWords lang]
     unWord (word, v, w) = (V.toList word, v, w)
 
 pBaseEqNearest :: CostDivDesc -> Positive Double -> String -> Lang -> Bool
 pBaseEqNearest costDesc kP xR lang =
-    let ba = findAll cost k x trie
+    let ba = findAll cost k x dawg
         nr = findNearest costDiv k x dawg
     in  check ba nr
   where
@@ -165,8 +164,7 @@ pBaseEqNearest costDesc kP xR lang =
     costDiv = toCostDiv costDesc
     cost = C.toCostInf costDiv
 
-    trie = Trie.fromLang (getWords lang)
-    dawg = DAWG.fromTrie trie
+    dawg = DAWG.fromLang (getWords lang)
 
 nub :: Ord a => [a] -> [a]
 nub = S.toList . S.fromList
