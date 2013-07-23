@@ -1,5 +1,5 @@
 name:               adict
-version:            0.4.0
+version:            0.4.1
 synopsis:           Approximate dictionary searching
 description:
     Approximate dictionary searching library.

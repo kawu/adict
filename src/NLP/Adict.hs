@@ -33,12 +33,6 @@ import NLP.Adict.Nearest (findNearest)
   The third one, 'bruteSearch', is provided only for reference
   and testing purposes.
 
-  The 'findAll' function is evaluated against the 'Trie' while the
-  'findNearest' one is evaluated against the 'DAWG'.
-  The reason to make this distinction is that the 'findNearest'
-  function needs to distinguish between DAG nodes and to know
-  when the particular node is visited for the second time.
-
   Both methods perform the search with respect to the cost function
   specified by the library user, which can be used to customize
   weights of edit operations.  The 'Cost' structure provides the
